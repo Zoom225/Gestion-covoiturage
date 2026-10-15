@@ -32,12 +32,16 @@
 @SET __MVNW_ERROR__=
 @SET __MVNW_PSMODULEP_SAVE=%PSModulePath%
 @SET PSModulePath=
-@FOR /F "usebackq tokens=1* delims==" %%A IN (`powershell -noprofile "& {$scriptDir='%~dp0'; $script='%__MVNW_ARG0_NAME__%'; icm -ScriptBlock ([Scriptblock]::Create((Get-Content -Raw '%~f0'))) -NoNewScope}"`) DO @(
+@SET MVNW_SCRIPT_DIR=%~dp0
+@SET MVNW_SCRIPT_NAME=%__MVNW_ARG0_NAME__%
+@FOR /F "usebackq tokens=1* delims==" %%A IN (`powershell -noprofile "& {$scriptDir=$env:MVNW_SCRIPT_DIR; $script=$env:MVNW_SCRIPT_NAME; icm -ScriptBlock ([Scriptblock]::Create((Get-Content -Raw (Join-Path $scriptDir $script)))) -NoNewScope}"`) DO @(
   IF "%%A"=="MVN_CMD" (set __MVNW_CMD__=%%B) ELSE IF "%%B"=="" (echo %%A) ELSE (echo %%A=%%B)
 )
 @SET PSModulePath=%__MVNW_PSMODULEP_SAVE%
 @SET __MVNW_PSMODULEP_SAVE=
 @SET __MVNW_ARG0_NAME__=
+@SET MVNW_SCRIPT_DIR=
+@SET MVNW_SCRIPT_NAME=
 @SET MVNW_USERNAME=
 @SET MVNW_PASSWORD=
 @IF NOT "%__MVNW_CMD__%"=="" ("%__MVNW_CMD__%" %*)
