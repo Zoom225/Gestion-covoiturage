@@ -11,8 +11,8 @@
 	<groupId>com.plateforme</groupId>
 	<artifactId>covoiturage</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
+	<name>DriveConnect</name>
+	<description>Backend de gestion du covoiturage multi-zones DriveConnect</description>
 	<url/>
 	<licenses>
 		<license/>
