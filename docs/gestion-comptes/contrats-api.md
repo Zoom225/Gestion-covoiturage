@@ -1,5 +1,8 @@
 # Contrats REST — gestion centralisée des comptes
 
+**Actualisation lot 1 / DEC-COMPTES-003 :** la cible est e-mail ADMIN et matricule CLIENT ; les descriptions antérieures d'un login client indépendant sont historiques. Ce lot livre uniquement les séquences et l'historique, sans changer login/me ou les permissions. Les tests automatisés AC-NUM01–AC-NUM12 sont décrits dans le [dossier du lot](lot-1-numerotation.md) ; ils sont distincts des scénarios documentaires ci-dessous.
+
+
 [Décisions](decisions.md) · [Permissions](matrice-permissions.md) · [Acceptation](tests-acceptation.md).
 Issue [#7](https://github.com/Zoom225/Gestion-covoiturage/issues/7), base 8a2a474, 21 octobre 2026.
 

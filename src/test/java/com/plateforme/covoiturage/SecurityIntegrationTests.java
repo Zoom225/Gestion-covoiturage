@@ -123,6 +123,8 @@ class SecurityIntegrationTests {
         // Base éphémère Testcontainers uniquement ; aucune écriture dans une base locale.
         jdbc.update("delete from compte");
         jdbc.update("delete from vehicule");
+        // Reset allocation history only in this disposable Testcontainers database.
+        jdbc.execute("truncate table client_numero_reservation");
         jdbc.update("delete from client");
         jdbc.update("delete from zone");
         home = zones.saveAndFlush(new Zone("Zone locale"));
