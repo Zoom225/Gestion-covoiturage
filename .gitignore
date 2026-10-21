@@ -36,3 +36,11 @@ build/
 .env
 .env.*
 !.env.example
+
+# Local fictional demo account registry; never commit this file.
+/scripts/demo/comptes-demo.local.csv
+
+# Private demo registries: Markdown is primary; CSV paths stay protected.
+/src/main/java/com/plateforme/covoiturage/comptes-demo.local.md
+/src/main/java/com/plateforme/covoiturage/comptes-demo.local.csv
+/scripts/demo/comptes-demo.local.md

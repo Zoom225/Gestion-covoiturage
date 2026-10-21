@@ -1,0 +1,287 @@
+# Gestion centralisée des comptes — décisions
+
+Dossier de l'[issue #7](https://github.com/Zoom225/Gestion-covoiturage/issues/7), établi le 21 octobre 2026.
+Base inspectée : origin/master, commit 8a2a47466df3375ad3e1c2ba4356b15de942fac6, intégrant la PR #6.
+Statut : décisions fonctionnelles validées par le responsable du projet ; propositions techniques et questions ouvertes distinguées. Aucun comportement nouveau livré.
+
+Navigation : [permissions](matrice-permissions.md), [contrats REST](contrats-api.md), [acceptation](tests-acceptation.md).
+
+## 1. Références
+
+- Énoncé « Gestion d'un réseau de covoiturage multi-zones », fichier externe ../Enonce_CarShare_Network.docx.
+- Cahier référencé par le [README](../../README.md) : ../cahier des charge/FIN-DriveConnect_Cahier_des_charges_FINAL_25P_DIAGRAMMES_UML_EA.docx ; sections 7, 8 (RM01–RM60), 9–14, 16 (AA1–AA11), 18–20 et 25.
+- Ces chemins externes sont relatifs à la racine du dépôt ; les deux documents Word sont hors Git.
+- Mission du responsable « Issue GitHub : documentation et validation des règles de gestion des comptes » : DEC-COMPTES-001 et A1–A9 validées. Cette décision complète le cahier sans renuméroter RM01–RM60.
+- Code, migrations et tests : constat de l'existant, distinct de la cible.
+- PadellAout : référence locale de parcours et d'interface seulement, sans autorité métier pour DriveConnect.
+
+L'énoncé définit catégories, préfixes, périmètres, authentification et mots de passe hachés ; il ne définit pas l'inscription autonome ni toutes les opérations administratives. DEC-COMPTES-001 est une évolution explicite. RM01 conserve sa portée sur les opérations protégées ; la nouvelle inscription sera une exception publique expressément limitée.
+
+## 2. Existant à conserver
+
+| Élément inspecté | Fonctionnement constaté | Limite actuelle |
+|---|---|---|
+| [Compte](../../src/main/java/com/plateforme/covoiturage/entity/Compte.java) | Identifiant unique, hash BCrypt, actif, rôle CLIENT/ADMIN ; client exclusif ou périmètre administratif | Aucun e-mail, invitation ou historique |
+| [Client](../../src/main/java/com/plateforme/covoiturage/entity/Client.java) | Numéro unique, catégorie, actif, zone facultative sauf LOCAL | Aucun générateur de numéro métier |
+| [Zone](../../src/main/java/com/plateforme/covoiturage/entity/Zone.java) | Identité technique et nom | Pas d'état ni de code métier ; CRUD non livré |
+| Enums existants | RoleTechnique CLIENT/ADMIN ; PerimetreAdmin GLOBAL/LOCAL ; CategorieClient VIP/LOCAL/OCCASIONNEL | Ne pas créer cinq rôles ou tables d'utilisateurs |
+| [CompteRepository](../../src/main/java/com/plateforme/covoiturage/repository/CompteRepository.java) | Chargement du client et des zones avec le compte | findByIdentifiant utilise une égalité sensible à la casse |
+| [AuthService](../../src/main/java/com/plateforme/covoiturage/service/AuthService.java) | Login BCrypt, erreur générique, refus au-delà de 72 octets UTF-8 ; contrôle Compte.actif et Client.actif | Pas d'inscription ou de gestion administrative |
+| [TokenService](../../src/main/java/com/plateforme/covoiturage/service/TokenService.java) | JWT HS256 : sujet = id Compte ; émetteur, audience, dates, identifiant du jeton | Pas de refresh token ni révocation individuelle |
+| [AuthController](../../src/main/java/com/plateforme/covoiturage/controller/AuthController.java) | POST login et GET me ; réponses no-store | Deux opérations d'authentification seulement |
+| [ProfileResponse](../../src/main/java/com/plateforme/covoiturage/dto/response/ProfileResponse.java) | Rôle, catégorie, périmètre et zones issus de PostgreSQL | Sans numéro client ni états détaillés |
+| [SecurityConfiguration](../../src/main/java/com/plateforme/covoiturage/security/SecurityConfiguration.java) | Stateless ; login public ; me authentifié ; préfixe admin réservé à ADMIN ; reste refusé | Inscription non autorisée et non implémentée |
+| [AdminAuthorization](../../src/main/java/com/plateforme/covoiturage/security/AdminAuthorization.java) | GLOBAL ou LOCAL de la zone réelle de la ressource | Refuse resourceZoneId null même pour GLOBAL ; insuffisant pour les comptes sans zone |
+| [Gestion d'erreurs](../../src/main/java/com/plateforme/covoiturage/exception/GlobalExceptionHandler.java) | Réponses contrôlées 400/401/403 | Cas métier 404/409 à ajouter ultérieurement |
+
+Le convertisseur JWT recharge le compte en PostgreSQL à chaque requête : les permissions ne proviennent pas de données Angular ni de claims de rôle faisant autorité. Conserver ce mécanisme et le PasswordEncoder. Les sondes /api/admin/probe existent seulement dans les tests, sans API administrative métier disponible.
+
+Aucun projet Angular DriveConnect trouvé dans les fichiers du worktree ; sa création relève d'un lot distinct.
+
+### Référence PadellAout
+
+Les services de création et formulaires réactifs, chargements, erreurs et affichage du mot de passe constituent des références utiles. PadellAout distingue connexions administrateur et membre et conserve des états de session séparés dans une gestion Angular centralisée avec stockage navigateur. DriveConnect conserve sa connexion unique, ses deux rôles, son JWT et la mémoire par défaut. Ne pas transférer catégories du padel, matricules, secrets, comptes initiaux, permissions déduites du navigateur ou durée de session.
+
+## 3. DEC-COMPTES-001 — architecture mixte
+
+**VALIDÉE — évolution du cahier.**
+
+Un visiteur peut créer un Client et un Compte associés. Spring Boot impose CLIENT et OCCASIONNEL et génère le numéro. Aucun choix public de VIP, LOCAL, ADMIN, périmètre administratif ou privilège. Les données reçues ne sont jamais mappées directement sur l'entité.
+
+Le mot de passe choisi est haché avec BCrypt. Une transaction lie Client, Compte et écritures nécessaires : une erreur annule les écritures associées. PostgreSQL garantit l'unicité en concurrence. Attribution VIP/LOCAL et création administrative relèvent d'opérations protégées distinctes.
+
+A3 complète ce nouveau parcours d'inscription publique : aucun accès avant vérification de l'e-mail ; aucun JWT de connexion émis lors de la simple inscription. Cette précondition ne s'applique pas rétroactivement aux comptes préexistants. Le traitement d'un échec d'envoi doit rester récupérable sans état de compte incohérent ; modalités P11 et périmètre détaillé en A7.
+
+RM01–RM04, RM09–RM13, RM58–RM60 ; AC01–AC10 dans les [tests](tests-acceptation.md).
+
+## 3 bis. DEC-COMPTES-002 — mots de passe des comptes fictifs isolés
+
+**VALIDÉE par le responsable le 21 octobre 2026 — complément documentaire à A7 et DEC-COMPTES-001, rattaché à l'issue #7.**
+
+Pour un futur jeu de comptes exclusivement fictifs, dans un environnement de développement ou de démonstration isolé uniquement, le mot de passe initial peut suivre la convention **identifiant + "1234!"**. Cette formule est une convention de données fictives, pas un secret réel ni un mot de passe par défaut de l'application.
+
+Conditions et limites :
+
+- Ne jamais appliquer cette convention comme mot de passe initial, valeur de secours ou remplacement aux comptes réels, quel que soit l'environnement.
+- Ne jamais initialiser de compte de démonstration ou de mot de passe prévisible en production. La présence de prod exclut cette initialisation même avec dev ou un éventuel profil de démonstration simultanément actif.
+- Le seul profil dev ne prouve pas l'isolation : réserver les données fictives à un environnement et une base séparés des comptes réels et de la production. Ne pas modifier un compte existant pour lui appliquer la formule.
+- Conserver le mot de passe choisi par l'utilisateur pour toute inscription publique OCCASIONNEL, conformément à DEC-COMPTES-001/A3/A7, y compris en développement. Ne jamais substituer la convention au choix reçu.
+- Conserver l'invitation sécurisée A7 pour les comptes créés administrativement par les parcours normaux, y compris en développement. Le futur jeu fictif est distinct de ces parcours ; il n'autorise aucun contournement de l'invitation dans les API administratives.
+- Stocker uniquement le hash BCrypt produit par le PasswordEncoder existant. La formule ne dispense ni des limites BCrypt ni du refus de toute troncature silencieuse au-delà de 72 octets UTF-8. Ne pas journaliser la valeur calculée ni l'envoyer en clair par e-mail.
+- Ne pas modifier les rôles, catégories, contrôles d'activité ou périmètres pour faciliter une démonstration. Cette décision ne remplace pas la procédure sécurisée d'amorçage du premier GLOBAL réel prévue par A5.
+
+| Parcours | Règle de mot de passe conservée |
+|---|---|
+| Inscription publique CLIENT OCCASIONNEL | Choix de l'utilisateur ; vérification d'e-mail et activation selon DEC-COMPTES-001/A3 |
+| Création administrative normale, compte client ou administrateur | Invitation sécurisée A7 ; aucun mot de passe prévisible attribué par le créateur |
+| Futur jeu exclusivement fictif, développement/démonstration isolé | Convention facultative identifiant + "1234!", hashée avec BCrypt |
+| Compte réel, environnement non isolé ou production | Convention d'initialisation interdite ; aucune initialisation de démonstration en production |
+
+**Portée de cette issue : documentation seulement.** Aucun compte créé, aucun mot de passe calculé pour un compte existant, aucune donnée PostgreSQL modifiée et aucun mécanisme d'initialisation développé. L'outillage éventuel, son activation explicite et la vérification technique de l'isolation devront être spécifiés dans un lot ultérieur avant implémentation ; aucune initialisation automatique n'est introduite ici.
+
+Cohérence : A7 reste la règle des parcours normaux ; DEC-COMPTES-001 conserve rôle CLIENT, catégorie OCCASIONNEL imposés côté serveur et mot de passe choisi par le visiteur. DEC-COMPTES-002 autorise seulement la préparation future de données fictives isolées. Aucun nouveau droit public ou administratif n'en découle ; RM01–RM60 et A1–A9 ne sont pas renumérotés.
+
+Support de consultation retenu : comptes-demo.local.md est le registre privé principal des cinq profils fictifs. Il reste local et exclu de Git. Le CSV précédemment évoqué est absent et n'est plus requis ; il n'est pas recréé. Aucun mot de passe concaténé ni contenu du registre privé n'est reproduit dans les documents publiables. Voir le [guide du registre](comptes-demo-exemple.md).
+
+Preuves à développer : AC32–AC38 dans les [tests d'acceptation](tests-acceptation.md), notamment absence de données de démonstration en production et en combinaison de profils. Contribution AA6 (sécurité), AA10 (tests à réaliser) et AA11 (documentation).
+
+
+## 4. Décisions A1–A9
+
+### A1 — numérotation
+
+**VALIDÉ :** V pour VIP, C pour LOCAL, O pour OCCASIONNEL ; minimum quatre chiffres ; génération automatique avec séquences PostgreSQL ; unicité, non-réutilisation, conservation de l'historique lors des changements de catégorie ; jamais count()+1.
+
+**Proposition technique de dépassement :** compléter à gauche jusqu'à quatre chiffres puis laisser croître : O0001, O9999, O10000. Ne jamais tronquer, remettre à zéro ou imposer une largeur fixe de quatre chiffres. Maximum : P01.
+
+RM09–RM11 écrivent Vxxxx/Cxxxx/Oxxxx ; l'énoncé demande un préfixe suivi de chiffres sans longueur exacte. Le minimum de quatre est la précision validée. Les fixtures existantes à quatre chiffres sont compatibles. V1 utilise TEXT UNIQUE sans CHECK de format : le format cible n'est pas encore garanti par SQL.
+
+**À confirmer avant migration :** séquence indépendante par catégorie ou commune ; recommandation de séquences par catégorie. P01 fixe aussi le numéro courant lors d'un changement de catégorie. Conserver l'id technique Client et réserver les anciens numéros dans un historique unique. Une séquence peut laisser des trous après rollback : ne pas promettre une numérotation sans trous.
+
+Backend : générateur partagé et transitions transactionnelles. PostgreSQL : futures séquences et historique, audit des numéros et initialisation au-delà des valeurs déjà attribuées, y compris les écritures concurrentes pendant la transition. Angular : numéro en lecture seule. Tests AC07–AC09/AC20 ; RM09–RM11/RM58–RM60.
+
+### A2 — identifiant de connexion
+
+**VALIDÉ :** unique, distinct du numéro client et comparé sans distinction de casse. Préserver les identifiants existants ; audit des collisions après normalisation avant toute migration.
+
+L'existant utilise VARCHAR(100) UNIQUE et recherche exacte. **Cette issue ne change ni login ni index.** L'insensibilité à la casse est une cible à implémenter avec l'unicité SQL après P02 ; aucune conversion silencieuse des comptes en collision.
+
+Backend : normalisation partagée entre création, recherche et connexion. PostgreSQL : stratégie d'unicité après audit et résolution autorisée des collisions. Angular : identifiant indépendant de l'e-mail et du numéro. Tests AC06/AC29 ; RM59.
+
+### A3 — inscription publique
+
+**VALIDÉ :** OCCASIONNEL initial ; mot de passe choisi par le visiteur ; e-mail de contact obligatoire et vérifié avant activation ; aucune zone automatiquement attribuée ; aucune connexion automatique avant validation ; protection contre les inscriptions automatisées.
+
+Le serveur fixe rôle, catégorie et champs de sécurité. Le contrat proposé n'accepte aucune zone publique tant que l'éventuel choix manuel n'est pas précisé (P03). L'absence d'attribution automatique est validée ; l'exclusion durable de tout choix manuel ne l'est pas.
+
+Backend : inscription, preuve d'e-mail, activation et anti-abus. PostgreSQL : coordonnées et état de vérification à modéliser ; empreinte du jeton à usage unique recommandée. Angular : formulaire public, état e-mail à vérifier, puis connexion commune. P03/P04/P08/P11 restent nécessaires. Tests AC01–AC05/AC10/AC27 ; RM01–RM04/RM13/RM58–RM60.
+
+### A4 — catégories
+
+**VALIDÉ :** attribution VIP par GLOBAL exclusivement ; attribution LOCAL par GLOBAL ou ADMIN LOCAL habilité dans sa zone. Contrôle backend et trace auteur/date/motif. Préserver réservations et historique ; ne pas inventer de condition commerciale VIP.
+
+« Habilité » ne signifie pas que tout LOCAL peut promouvoir. Habilitation exacte, autres transitions, numéro courant et réservations futures : P01/P05. Ne pas autoriser implicitement un LOCAL à transformer un VIP parce que la catégorie cible serait LOCAL.
+
+Backend : autorisation partagée, zones source/cible et transaction auditée. PostgreSQL : FK conservées, historique et protection de concurrence futurs. Angular : actions autorisées par le serveur et motif de changement. Tests AC18–AC20 ; RM04–RM12/RM38–RM39/RM49/RM51/RM60.
+
+### A5 — administrateurs
+
+**VALIDÉ :** premier GLOBAL par procédure opérateur sécurisée et ponctuelle, sans secret codé en dur. Seul GLOBAL crée les autres administrateurs. LOCAL ne crée donc ni GLOBAL ni LOCAL. Aucun endpoint public de création d'administrateur.
+
+Interdiction de désactiver le dernier GLOBAL actif, y compris sous concurrence. Les requêtes utilisent des transactions indépendantes, sérialisées par un verrou commun PostgreSQL : chaque transaction acquiert ce même verrou avant de relire les GLOBAL actifs et de décider la désactivation, puis le conserve jusqu'au commit ou rollback. Verrouiller seulement chaque ligne cible ne protège pas deux GLOBAL différents. Le mécanisme concret reste à définir en P06 ; aucune transaction unique partagée entre plusieurs requêtes n'est supposée.
+
+La procédure initiale devrait refuser un second amorçage ; forme opératoire P06. Protéger aussi d'éventuels déclassements/suppressions est recommandé, mais ces droits et opérations ne sont pas spécifiés.
+
+Backend : création GLOBAL seule, invitation A7, invariant concurrent. PostgreSQL : stratégie de verrou à concevoir ; aucun compte créé ici. Angular : création réservée GLOBAL, sans mot de passe temporaire fourni par l'administrateur. Tests AC16/AC17/AC22/AC23 ; RM02/RM49/RM51/RM60.
+
+### A6 — périmètre
+
+**VALIDÉ :** GLOBAL couvre le réseau dans les limites des opérations autorisées ; LOCAL sa zone seulement. Gestion administrative des VIP/OCCASIONNEL sans zone réservée GLOBAL. Un changement de zone contrôle source ET cible.
+
+Appliquer le périmètre avant pagination aux lignes, totaux, compteurs, détails et modifications. Les filtres Angular se combinent avec les restrictions serveur sans les élargir. La zone administrative de gestion ne définit pas toutes les zones de réservation accessibles à un VIP/OCCASIONNEL : ces droits métier restent partiellement ouverts dans le cahier.
+
+Backend : compléter AdminAuthorization pour ressources sans zone et opérations réseau, sans politique concurrente. PostgreSQL : requêtes filtrées et index justifiés. Angular : données autorisées seulement. P05/P07 précisent les droits fins. Tests AC14/AC15/AC18/AC21 ; RM07/RM12/RM49/RM51/RM57.
+
+### A7 — mots de passe
+
+**VALIDÉ :** BCrypt par le PasswordEncoder existant ; mot de passe choisi lors de l'inscription ; invitation sécurisée pour création administrative, jeton à usage unique et durée limitée ; aucun mot de passe envoyé en clair par e-mail ; changement et réinitialisation sécurisés à prévoir.
+
+**Périmètre des parcours d'e-mail et d'invitation :**
+
+| Population | Précondition du nouveau parcours | Limite |
+|---|---|---|
+| Nouveaux inscrits publics CLIENT OCCASIONNEL | E-mail de contact vérifié avant activation ; mot de passe choisi par la personne | DEC-COMPTES-001/A3 ; pas de connexion automatique avant validation |
+| Nouveaux comptes créés administrativement par le parcours normal, CLIENT ou ADMIN | Invitation sécurisée à usage unique et durée limitée pour établir le mot de passe, avant accès au compte | A7 ; l'éventuelle vérification distincte d'e-mail et son articulation avec l'invitation restent P06/P11 |
+| Comptes préexistants | Contrôles d'authentification et d'activité actuellement en vigueur | Aucun refus fondé sur l'absence de métadonnées d'e-mail ou d'invitation introduit par cette issue ; toute application rétroactive exige une décision et une migration adaptées |
+| Futur jeu exclusivement fictif en environnement isolé | Exception DEC-COMPTES-002 et contrôles de rôle, zone et activité conservés | Aucun détournement du parcours normal d'invitation ; aucune initialisation en production |
+
+L'invitation n'est pas déclarée automatiquement équivalente à une vérification d'e-mail : les modalités ouvertes doivent être précisées avant développement. La création opérateur du premier GLOBAL réel reste la procédure distincte A5/P06.
+
+Conserver la limite applicable de 72 octets UTF-8 et refuser tout dépassement sans troncature. La longueur en caractères seule ne suffit pas. Politique minimale et durées : P08.
+
+Backend : cycle de vie des comptes réutilisant l'encodeur et AuthService ; consommation atomique et empreinte des jetons recommandées, sans mécanisme JWT de connexion parallèle. PostgreSQL : hash actuel NOT NULL avec CHECK BCrypt ; un invité sans mot de passe nécessite une modélisation explicite P06, sans mot de passe par défaut. Angular : parcours invitation/changement/réinitialisation futurs ; ne pas conserver le mot de passe après soumission. Tests AC16/AC17/AC24/AC27 ; RM01–RM03/RM60.
+
+Complément documentaire : DEC-COMPTES-002 autorise la convention de mot de passe initial uniquement pour un futur jeu fictif en développement/démonstration isolé. Les parcours normaux conservent le choix utilisateur ou l'invitation A7 ; la production reste exclue. Tests AC32–AC38.
+
+### A8 — statuts
+
+**VALIDÉ :** Compte.actif = accès technique ; Client.actif = état métier. Conserver les deux contrôles ; modifier l'un ne change pas implicitement l'autre. Afficher les deux et l'accès effectif ; historiser les modifications.
+
+Accès CLIENT = Compte.actif ET Client.actif ; ADMIN = Compte.actif, sous les autres contrôles JWT. La vérification d'e-mail précède l'activation publique sans réactiver un client métier désactivé. Réactivation, droits de bascule et valeur initiale Client.actif : P09.
+
+Backend : changement explicite et audit, effet immédiat via relecture en base même avec ancien JWT. PostgreSQL : booléens conservés, historique futur. Angular : colonnes distinctes et aucun bouton ambigu « utilisateur actif ». Tests AC12/AC13/AC22/AC25 ; RM13/RM60.
+
+### A9 — Angular
+
+**VALIDÉ :** une page de connexion, une session, POST login puis GET me, guards et interceptor Bearer ; JWT en mémoire par défaut. Un 401 d'API protégée invalide la session ; un 403 n'entraîne pas de déconnexion systématique. Aucun rôle issu du navigateur ou du préfixe du numéro.
+
+| Profil relu via /api/auth/me | Destination retenue |
+|---|---|
+| ADMIN GLOBAL | /admin/global |
+| ADMIN LOCAL | /admin/local |
+| CLIENT VIP | /client/vip |
+| CLIENT LOCAL | /client/local |
+| CLIENT OCCASIONNEL | /client/occasionnel |
+
+Un profil incohérent n'ouvre aucun espace protégé. Limiter le Bearer à l'origine API autorisée. Le stockage en mémoire implique une reconnexion après rechargement tant qu'aucun renouvellement n'est validé.
+
+Structure cible : core/auth, core/guards, core/interceptors, core/services ; features/auth, features/admin, features/client ; shared. Reactive Forms, validations, erreurs, chargement et masquage du mot de passe réutilisables. Tableau administratif : identifiant, numéro, rôle, catégorie ou périmètre, zone, Compte.actif, Client.actif, accès effectif et actions autorisées ; recherche, filtres et pagination serveur. Durée de session et détails UX : P08/P10. Tests AC26/AC28/AC30 ; AA8/AA9, RM01–RM03.
+
+## 5. Détails À PRÉCISER
+
+Ces recommandations ne sont pas des permissions supplémentaires.
+
+| Réf. | Ce que les sources fixent / ce qui manque | Recommandation à valider | Impacts backend / PostgreSQL / Angular | Tests |
+|---|---|---|---|---|
+| P01 | Préfixes et minimum quatre validés ; séquences commune ou indépendantes, maximum et numéro courant après transition ouverts | Séquences par catégorie, historique unique, id Client stable et format extensible | Générateur / reprise et réservation des anciens numéros / lecture seule | AC07–AC09/AC20, limites maximales après choix |
+| P02 | Login insensible à la casse validé ; Unicode, espaces, recherche partielle, modification du login non définis | Affichage original, clé normalisée cohérente après audit | Normalisation partagée / détecter collisions avant migration / formulaire et recherche | AC06/AC29, collisions selon normalisation retenue |
+| P03 | E-mail public obligatoire ; pas de zone automatique ; autres champs, unicité e-mail et zone manuelle non définis | DTO minimal identifiant/e-mail/mot de passe ; zone provisoirement exclue | Validation / coordonnées et éventuels index / formulaire minimal | AC01/AC04/AC05 |
+| P04 | V2 impose au plus un Compte par Client ; nombre de comptes par personne non défini | Conserver relation existante ; définir la notion de personne avant assouplissement | Politique anti-doublon / UNIQUE client_id conservé / conflits explicites | AC06/AC29 et cas multi-comptes futurs |
+| P05 | VIP GLOBAL, LOCAL GLOBAL ou LOCAL habilité ; conditions VIP, habilitation, autres transitions et réservations futures ouvertes | Aucune condition commerciale inventée ; matrice des transitions et analyse des réservations | Politique transactionnelle / audit et concurrence / motif et actions | AC18–AC20 et effets futurs à spécifier |
+| P06 | Premier GLOBAL opérateur, autres GLOBAL seuls, invitations ; procédure, invité sans hash et modification de périmètre ouverts | Amorçage ponctuel ; profil en attente explicite ; étendre la protection aux futures réductions du nombre de GLOBAL | Procédure / schéma invitation compatible sans changer V2 / invitation sans mot de passe admin | AC16/AC17/AC22/AC23 |
+| P07 | LOCAL sa zone, sans-zone GLOBAL ; droits précis de création des clients par LOCAL, CRUD zones et visibilité des comptes administrateurs non détaillés | Refus par défaut des droits non spécifiés ; arbitrage par opération | Autorisation / requêtes filtrées / écrans selon droits | AC14/AC15/AC21 ; CRUD zones après validation |
+| P08 | Jetons limités à usage unique et limite BCrypt ; durées et politique minimale non fixées | Durées configurables et empreintes ; décider révocation après changement du mot de passe | Cycle de vie et anti-abus / consommation atomique / expiration et messages | AC10/AC24/AC26/AC27 |
+| P09 | Deux activités et vérification avant activation ; réactivation, droits de bascule et activité métier initiale ouverts | Activation conditionnelle sans réactiver implicitement Client | Statuts / historique et préconditions / affichage des deux états | AC12/AC13/AC25 |
+| P10 | Cinq destinations et mémoire validées ; aucun frontend trouvé | Lot Angular distinct après contrats ; pas de refresh token inventé | Login/me conservés / aucun changement SQL imposé / session et écrans partagés | AC28/AC30, responsive et accessibilité |
+| P11 | E-mails nécessaires ; prestataire, expéditeur, renvoi et reprise d'échec non définis | Livraison après commit avec reprise fiable à concevoir ; aucun secret ou jeton complet journalisé | Envoi / livraison persistante si retenue / confirmation et renvoi selon politique | AC10/AC16/AC27, reprise sans doublon |
+
+## 6. PostgreSQL, migration et risques
+
+[V1](../../src/main/resources/db/migration/V1__create_referentials.sql) : zone/client/vehicule ; numéro TEXT UNIQUE, catégories CHECK, FK zone, zone obligatoire LOCAL.
+[V2](../../src/main/resources/db/migration/V2__create_accounts.sql) : identifiant VARCHAR(100) UNIQUE, hash BCrypt VARCHAR(60) NOT NULL avec CHECK, actif, rôle, client_id UNIQUE et FK, cohérence CLIENT/ADMIN et GLOBAL/LOCAL, index de zone.
+
+Ces migrations restent intactes. Les identités techniques existantes ne génèrent pas les numéros clients métier.
+
+Les futures migrations devront traiter, après arbitrages : séquences métier, historique des numéros, coordonnées et preuve d'e-mail, invitations/réinitialisation, unicité normalisée et traçabilité. Auditer numéros et collisions de login avant contraintes ; aucune réécriture automatique autorisée ici. Les fixtures de sécurité changent actuellement la catégorie en conservant V0001 : une future contrainte préfixe/catégorie exigera leur adaptation en conservant la preuve qu'une catégorie ne donne jamais ADMIN.
+
+Risques : escalade par JSON, accès hors zone, fuite des totaux, attribution VIP par LOCAL, inscription massive, réutilisation ou consommation concurrente de jetons, double désactivation GLOBAL, collisions et perte d'historique. Autoriser l'inscription future par méthode/route exactes, sans permitAll global sur /api/auth/**. Conserver PostgreSQL, JWT, Swagger, données et secrets.
+
+## 7. Traçabilité RM01–RM60
+
+Cette classification couvre le registre entier sans prétendre l'implémenter.
+
+| RM | Contribution documentaire | Décisions / acceptation |
+|---|---|---|
+| RM01–RM04 | Identité, exception publique limitée, rôle/catégorie et propriété | DEC, A3/A6/A9 ; AC01–AC05/AC11/AC14/AC26 |
+| RM05–RM08 | VIP J-30, LOCAL J-10, OCCASIONNEL J-3 et zone LOCAL conservés | A4/A6 ; AC18–AC21 ; tests métier futurs |
+| RM09–RM12 | Préfixes, minimum, unicité ; zones VIP seulement si autorisées | A1/A4/A6 ; AC07–AC09/AC20 |
+| RM13 | Compte et client actifs ; vérification avant activation | A3/A8 ; AC10/AC12/AC13/AC25 |
+| RM14–RM37 | Trajets, privé, capacité, véhicules, réservations, paiement, dette : hors implémentation, aucune règle modifiée | A4 préserve réservations ; tests des futurs modules |
+| RM38–RM39 | Validation à la réservation et revalidation à la confirmation | A4/A6, P05 ; AC20/AC21 ; tests métier futurs |
+| RM40–RM48 | États, J-1, dette et annulation : hors implémentation, conservation des données | P05 ; futurs tests métier |
+| RM49 | Administration LOCAL dans sa zone | A4/A6 ; AC14/AC15/AC18/AC21 |
+| RM50 | Régularisation de dette : hors périmètre | Futur module dette |
+| RM51 | GLOBAL réseau dans les fonctions autorisées | A4–A6 ; AC16/AC18/AC22 |
+| RM52–RM56 | Restauration, dette unique, paiements distincts, J-1 et indisponibilités : hors périmètre | A4 ; futurs modules métier |
+| RM57 | Compteurs et statistiques filtrés selon le périmètre | A6 ; AC14 |
+| RM58 | Relations, atomicité et contraintes | DEC/A1/A3 ; AC06–AC09/AC16/AC31 |
+| RM59 | Numéros et login normalisé cible uniques en SQL | A1/A2 ; AC06–AC09/AC29 |
+| RM60 | Auteur/date/motif, statuts, numéros et événements sans secrets | A1/A4/A8 ; AC20/AC25/AC31 |
+
+Anomalie source : RM07 se termine dans le cahier par une phrase incomplète (« La simple connaissance. »). L'énoncé confirme clairement le périmètre LOCAL ; aucune règle supplémentaire n'en est déduite. La route indicative /api/clients/me en section 20 ne justifie pas de dupliquer /api/auth/me déjà livré.
+
+## 8. Acquis AA1–AA11
+
+| AA | Contribution de cette issue documentaire | Preuve future |
+|---|---|---|
+| AA1 | Besoin, acteurs et parcours | Revue fonctionnelle |
+| AA2 | Exigences, décisions et questions | Validation du dossier |
+| AA3 | Relations et impacts du modèle | Modèle actualisé après arbitrages |
+| AA4 | Contraintes et risques de migration | Migrations futures testées |
+| AA5 | Responsabilités des couches | Services intégrés sans doublons |
+| AA6 | JWT, BCrypt, rôles et périmètres | Tests de sécurité |
+| AA7 | Contrats REST conceptuels | API et OpenAPI futurs |
+| AA8 | Structure, session et écrans cibles | Angular responsive futur |
+| AA9 | Validations et erreurs | Tests HTTP et formulaires |
+| AA10 | Scénarios, concurrence et Git | Tests automatisés et CI ultérieurs |
+| AA11 | Dossier navigable et issue | Documentation et démonstration |
+
+Contribution documentaire ne signifie pas validation technique complète des acquis.
+
+## 9. Étapes futures et stratégie Git
+
+1. Valider le dossier et préciser les questions bloquantes du prochain lot.
+2. Concevoir création atomique, invitations et numérotation ; nouvelles migrations seulement après P01/P02/P06.
+3. Réaliser les API administratives et le périmètre avant pagination après P05/P07/P09.
+4. Réaliser inscription, vérification d'e-mail et activation après P03/P04/P08/P11 ; conserver login/me.
+5. Créer Angular séparément puis session, tableau et cinq destinations A9.
+6. Tester sur PostgreSQL isolé, tester sécurité/Angular, documenter puis préparer une PR française après accord.
+
+Chaque futur lot aura issue et branche après validation ; aucune issue de développement supplémentaire créée ici. Besoins nouveaux conceptuels : service central des comptes, générateur de numéros, composants invitation/vérification, DTO administratifs ciblés. Noms à fixer sans dupliquer AuthService, TokenService, repositories ou autorisations.
+
+### État initial de la préparation
+
+Lors de la création du worktree documentaire, le dossier original était sur chore/issue-5-configuration-swagger, HEAD 5e4d049, avec README.md et application-dev.properties modifiés et deux scripts IntelliJ non suivis. Le fetch effectué à cette étape a actualisé origin/master à 8a2a474 ; master local est resté à 140597c, deux commits derrière. Ce relevé historique ne décrit pas toutes les modifications locales intervenues ensuite.
+
+### État actuel — correction documentaire de l'issue #7
+
+| Répertoire | Branche / HEAD | Modifications locales conservées |
+|---|---|---|
+| Dossier original covoiturage, hors périmètre d'écriture | chore/issue-5-configuration-swagger / 5e4d049 | .gitignore, README.md et application-dev.properties modifiés ; scripts/intellij-env.bat et scripts/intellij-env.ps1 non suivis |
+| Worktree covoiturage-docs-gestion-comptes | docs/gestion-comptes-regles-contrats / 8a2a474 | .gitignore modifié ; cinq documents docs/gestion-comptes non suivis, destinés au futur commit documentaire après accord |
+
+Le registre privé principal comptes-demo.local.md reste dans le dossier original, ignoré par Git et sans copie dans le worktree documentaire. Le CSV est absent. Les exclusions Markdown et CSV sont consolidées dans le .gitignore du worktree sans retrait des règles antérieures.
+
+Cet état est un instantané avant commit : aucun fichier indexé, aucun commit, push, merge ou PR dans cette correction. Aucun stash, reset, clean, transfert de correction locale ou changement de branche n'est effectué. Java, Angular, V1/V2, PostgreSQL et les comptes restent inchangés.
+
+La branche documentaire suit encore origin/master, base locale 8a2a474. Une publication ultérieure, uniquement après accord, devra cibler sa propre branche distante. Le futur commit devra inclure seulement les cinq documents et le .gitignore documentaire ; les modifications du dossier original et les registres privés restent hors publication.
