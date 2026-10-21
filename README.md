@@ -6,7 +6,7 @@ Backend Java Spring Boot de la plateforme de gestion d’un réseau de covoitura
 
 - Java 21
 - PostgreSQL 16 ou compatible
-- Docker Desktop (uniquement pour exécuter le test d’intégration Testcontainers)
+- Docker Desktop avec moteur Linux actif et Docker Compose v2 (tests Testcontainers et PostgreSQL de développement)
 
 Le dépôt inclut Maven Wrapper : Maven n’a pas besoin d’être installé séparément.
 
@@ -89,6 +89,12 @@ Tests et vérifications Maven :
 .\mvnw.cmd verify
 ```
 
+Pour reconstruire entièrement le projet et exécuter tous les tests :
+
+```powershell
+.\mvnw.cmd clean verify
+```
+
 Sur Linux ou macOS, remplacez `.\mvnw.cmd` par `./mvnw`. Le test d’intégration démarre PostgreSQL 16.6 avec Testcontainers et nécessite un daemon Docker actif.
 
 ## Fondations et avancement réel — issue #1
@@ -116,9 +122,10 @@ Les écritures de tests sont annulées par transaction. Aucun test n’est ignor
 lorsque Docker manque : la vérification doit alors échouer.
 
 La CI `.github/workflows/backend.yml` exécute `verify` sous Java 21 avec Docker
-sur les push master/main/feature, les pull requests et sur déclenchement manuel.
+sur les push master/main/feature/chore, les pull requests et sur déclenchement manuel.
 Elle conserve les rapports Surefire. Les exécutions du lot 1 ont réussi sur la
-PR #2 fusionnée. Le lot 2 doit encore être publié et vérifié en CI après validation.
+PR #2 fusionnée. La PR #4 du lot sécurité est également fusionnée et l'issue #3
+est fermée. Le lot de configuration Swagger est suivi dans l'issue #5.
 
 À implémenter dans les lots suivants : provisionnement des comptes, formats des numéros
 Vxxxx/Cxxxx/Oxxxx (RM09–RM11), états des référentiels, indisponibilités, trajets,
@@ -229,3 +236,138 @@ réservation restent à développer ; leur conformité à ces règles n'est pas 
 Acquis concernés : AA3/AA4 (modèle et intégrité), AA5 (couches), AA6 (sécurité),
 AA7 (API de connexion/profil), AA9 (validation et erreurs), AA10 (tests), AA11
 (documentation), avec une couverture limitée au périmètre de ce lot.
+
+## Configuration Spring Boot et Swagger — issue #5
+
+Java 21, Spring Boot 4.1.1 et Maven 3.10.0 via le wrapper existant sont conservés.
+La seule dépendance directe ajoutée est
+`org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1`. La version stable 3.1.1
+est annoncée dans la [documentation officielle](https://springdoc.org/) ; son
+[POM officiel](https://github.com/springdoc/springdoc-openapi/blob/v3.1.1/pom.xml)
+utilise Spring Boot 4.1.0. La compatibilité avec Spring Boot 4.1.1 est vérifiée
+par les tests de ce dépôt, sans changer la version de Spring Boot.
+
+`OpenApiConfiguration` fournit le titre **DriveConnect — API REST**, la description
+de la plateforme et la version issue de `pom.xml`, injectée par le filtrage Maven
+déjà configuré par le parent Spring Boot. Le schéma HTTP Bearer JWT s'appelle
+`bearerJwt`. Les réponses et erreurs des deux endpoints existants sont documentées
+en français ; le principal Spring Security et les entités de persistance ne sont
+pas exposés comme paramètres de requête.
+
+### Profils et exposition
+
+| Profils actifs | Documentation HTTP | Politique de sécurité |
+| --- | --- | --- |
+| Aucun | Désactivée | Règles JWT habituelles |
+| `dev` | Activée | GET Swagger/OpenAPI public ; API métier protégée |
+| `prod` | Désactivée | Aucune exception publique pour Swagger |
+| `dev,prod` | Désactivée | La politique de production prévaut |
+
+Le profil `dev` lie le serveur à `127.0.0.1`. Il n'est pas activé automatiquement.
+Les paramètres PostgreSQL et JWT restent externalisés pour tous les profils ;
+aucun mot de passe ni clé de signature de secours n'est ajouté. Les migrations
+V1/V2 restent inchangées. Hibernate valide le schéma créé par Flyway.
+
+Le choix retenu pour la production est de désactiver Swagger UI et OpenAPI.
+Une future exposition en production nécessitera une politique d'accès dédiée
+avant modification. Le simple ajout d'un profil de documentation ne doit pas
+rendre les endpoints métier publics.
+
+### PostgreSQL de développement reproductible
+
+Une instance PostgreSQL déjà installée reste utilisable avec les variables de la
+section « Configuration locale ». Sinon, le fichier `compose.yaml` fournit la
+même version PostgreSQL 16.6 que les tests. Il publie uniquement
+`127.0.0.1:15432`, utilise la base `carshare`, vérifie sa disponibilité et conserve
+les données dans un volume Docker. Le mot de passe doit être fourni au terminal.
+
+Après avoir défini `DB_PASSWORD`, `JWT_SECRET` et éventuellement `DB_USERNAME`
+comme indiqué plus haut :
+
+```powershell
+$env:DB_URL = "jdbc:postgresql://localhost:15432/carshare"
+docker compose up -d --wait
+docker compose exec -T postgres pg_isready -U carshare -d carshare
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"
+```
+
+Si `DB_USERNAME` a été personnalisé, adapter l'argument `-U`. Sur Bash :
+
+```bash
+export DB_URL=jdbc:postgresql://localhost:15432/carshare
+docker compose up -d --wait
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Autre possibilité : définir `SPRING_PROFILES_ACTIVE=dev` dans le terminal puis
+exécuter directement `.\mvnw.cmd spring-boot:run`. Ne pas activer `dev` en production.
+Arrêter le backend avec Ctrl+C et PostgreSQL avec `docker compose down` ; le volume
+de données est conservé. Réutiliser les mêmes identifiants aux démarrages suivants.
+
+### URLs et utilisation de Swagger
+
+- Backend local : <http://localhost:8080> ; la racine n'est pas un endpoint public.
+- Interface : <http://localhost:8080/swagger-ui/index.html>.
+- Spécification JSON : <http://localhost:8080/v3/api-docs>.
+- Configuration de l'interface : <http://localhost:8080/v3/api-docs/swagger-config>.
+
+Dans Swagger, exécuter `POST /api/auth/login` avec un compte préprovisionné.
+Copier uniquement la valeur `accessToken`, ouvrir **Authorize**, coller le jeton
+dans `bearerJwt` sans préfixe `Bearer`, puis valider. Exécuter `GET /api/auth/me` :
+l'interface ajoute le header `Authorization: Bearer <jeton>`. La connexion reste
+publique dans la spécification ; le profil courant exige le schéma Bearer.
+La conservation du jeton après rechargement de Swagger est désactivée.
+
+Ce lot ne crée ni compte de démonstration ni endpoint d'inscription. Sur une base
+vide, la documentation est accessible mais une connexion valide nécessite toujours
+le provisionnement sécurisé d'un compte décrit dans la section sécurité.
+
+### Vérifications et dépannage
+
+Les tests ajoutés contrôlent le JSON OpenAPI, le schéma Bearer, les opérations,
+les ressources Swagger, les refus sans JWT et l'absence de documentation en
+production, y compris avec `dev,prod`. Les tests de sécurité existants sont
+conservés et exécutés avec `dev` pour vérifier leur coexistence avec Swagger.
+PostgreSQL reste réel via Testcontainers ; aucun test n'utilise H2.
+
+Vérifications effectuées le 21 octobre 2026 sous Windows / Java 21.0.9 :
+
+- `.\mvnw.cmd clean verify` : **BUILD SUCCESS**, **36 tests**, aucun échec,
+  aucune erreur et aucun test ignoré. Répartition : 9 tests de contexte/persistance,
+  22 tests HTTP de sécurité/documentation en `dev`, 3 tests de configuration JWT
+  et 2 tests de désactivation en production. Les 29 tests précédents sont conservés.
+- `.\mvnw.cmd spring-boot:run` avec `SPRING_PROFILES_ACTIVE=dev` et PostgreSQL
+  Compose sur le port 15432 : démarrage réel réussi sur le port 8080.
+- `pg_isready` : PostgreSQL accepte les connexions ; l'historique Flyway contient
+  V1 et V2 avec `success=true`. Hibernate a validé les mappings.
+- GET `/swagger-ui/index.html`, `/v3/api-docs` et `/v3/api-docs/swagger-config` :
+  **200**. Le JSON généré est parsé et ses métadonnées, opérations et schéma Bearer
+  sont vérifiés. Les ressources JavaScript locales répondent également **200**.
+- GET `/api/auth/me` sans JWT : **401** ; connexion avec JSON malformé : **400** ;
+  connexion avec identifiants invalides : **401**. Les tests valident également
+  l'accès au profil avec un JWT obtenu par connexion et les autorisations 403.
+- Compose sans `DB_PASSWORD` : refus explicite de la configuration, sans valeur
+  de secours. L'environnement manuel de vérification utilise un projet Compose
+  temporaire distinct de l'environnement de développement et des secrets éphémères.
+
+Cas vérifiés et corrections :
+
+| Symptôme | Cause et action |
+| --- | --- |
+| Swagger retourne 401 hors `dev` | Politique volontaire. Activer uniquement `dev` pour un usage local ; la combinaison `dev,prod` laisse la documentation désactivée. |
+| `/api/auth/me` retourne 401 | Jeton absent, invalide, expiré ou compte indisponible. Se connecter avec un compte actif et renseigner le JWT via Authorize. |
+| Connexion retourne 400 | Corps JSON malformé ou champs invalides. Respecter le schéma affiché dans Swagger. |
+| Compose réclame `DB_PASSWORD` | Définir le mot de passe dans le terminal avant `docker compose up -d --wait`. |
+| Configuration JWT refusée | Les tests confirment le refus d'une clé absente, mal formée ou trop courte. Générer au moins 32 octets aléatoires, les encoder en Base64 et définir `JWT_SECRET`. |
+
+La clé JWT et le mot de passe PostgreSQL doivent être conservés dans un gestionnaire
+de secrets pour un environnement durable. Une base déjà initialisée dans le volume
+Compose conserve ses identifiants ; modifier seulement la variable du terminal ne
+modifie pas le mot de passe de ce compte PostgreSQL.
+
+Les AA concernés sont AA5 (configuration et couches), AA6 (sécurité conservée),
+AA7 (contrat REST), AA10 (tests et reproductibilité) et AA11 (documentation).
+Ce lot ne livre aucune nouvelle règle métier, aucun module clients/zones et aucun
+compte de démonstration. Aucun commit, push ni pull request n'est effectué avant
+validation. Les résultats ci-dessus sont locaux ; la CI de ce lot reste à exécuter
+après sa publication autorisée.

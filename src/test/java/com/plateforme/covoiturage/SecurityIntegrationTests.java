@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,6 +41,7 @@ import static org.assertj.core.api.Assertions.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "driveconnect.security.cors.allowed-origins=https://frontend.example.test")
 @Import({TestcontainersConfiguration.class, SecurityIntegrationTests.AdminProbe.class})
+@ActiveProfiles("dev")
 class SecurityIntegrationTests {
     private static final String PASSWORD = "test-password-only";
     private final HttpClient http = HttpClient.newHttpClient();
@@ -59,6 +61,62 @@ class SecurityIntegrationTests {
     private Client client;
     private Zone home;
     private Zone other;
+
+    @Test
+    void openApiDescribesTheApplicationAndBearerAuthentication() throws Exception {
+        var response = request("GET", "/v3/api-docs", null, null);
+        assertThat(response.statusCode()).isEqualTo(200);
+        var spec = mapper.readTree(response.body());
+        assertThat(spec.get("openapi").asText()).startsWith("3.");
+        assertThat(spec.at("/info/title").asText()).isEqualTo("DriveConnect — API REST");
+        assertThat(spec.at("/info/description").asText()).isEqualTo("Plateforme de gestion d'un réseau de covoiturage multi-zones");
+        assertThat(spec.at("/info/version").asText()).isEqualTo("0.0.1-SNAPSHOT");
+        assertThat(spec.at("/components/securitySchemes/bearerJwt/type").asText()).isEqualTo("http");
+        assertThat(spec.at("/components/securitySchemes/bearerJwt/scheme").asText()).isEqualTo("bearer");
+        assertThat(spec.at("/components/securitySchemes/bearerJwt/bearerFormat").asText()).isEqualTo("JWT");
+        assertThat(spec.at("/security/0/bearerJwt").isArray()).isTrue();
+    }
+
+    @Test
+    void openApiDocumentsLoginProfileAndSafeErrors() throws Exception {
+        var spec = mapper.readTree(request("GET", "/v3/api-docs", null, null).body());
+        var login = spec.path("paths").path("/api/auth/login").path("post");
+        var me = spec.path("paths").path("/api/auth/me").path("get");
+        assertThat(login.path("summary").asText()).isEqualTo("Se connecter");
+        assertThat(login.path("security").isArray()).isTrue();
+        assertThat(login.path("security").size()).isZero();
+        assertThat(login.path("responses").has("200")).isTrue();
+        assertThat(login.path("responses").has("400")).isTrue();
+        assertThat(login.path("responses").has("401")).isTrue();
+        assertThat(me.path("responses").has("401")).isTrue();
+        assertThat(me.path("responses").has("403")).isTrue();
+        assertThat(me.path("parameters").size()).isZero();
+        assertThat(spec.at("/components/schemas/LoginRequest/properties/password/writeOnly").asBoolean()).isTrue();
+        assertThat(spec.at("/components/schemas/LoginRequest/properties/password/format").asText()).isEqualTo("password");
+        assertThat(spec.path("components").path("schemas").has("ApiErrorResponse")).isTrue();
+        assertThat(spec.path("components").path("schemas").has("Compte")).isFalse();
+    }
+
+    @Test
+    void swaggerUiAndItsLocalConfigurationArePublicInDevelopment() throws Exception {
+        var page = request("GET", "/swagger-ui/index.html", null, null);
+        assertThat(page.statusCode()).isEqualTo(200);
+        assertThat(page.body()).contains("swagger-ui-bundle.js", "swagger-initializer.js");
+        var script = request("GET", "/swagger-ui/swagger-initializer.js", null, null);
+        assertThat(script.statusCode()).isEqualTo(200);
+        assertThat(script.body()).contains("/v3/api-docs/swagger-config");
+        var config = request("GET", "/v3/api-docs/swagger-config", null, null);
+        assertThat(config.statusCode()).isEqualTo(200);
+        assertThat(mapper.readTree(config.body()).path("url").asText()).isEqualTo("/v3/api-docs");
+    }
+
+    @Test
+    void publicDocumentationDoesNotGrantAccessToProtectedEndpoints() throws Exception {
+        assertThat(request("GET", "/v3/api-docs", null, null).statusCode()).isEqualTo(200);
+        assertError(request("GET", "/api/auth/me", null, null), 401, "UNAUTHORIZED");
+        assertError(request("GET", "/api/admin/probe", null, null), 401, "UNAUTHORIZED");
+        assertThat(request("GET", "/api/auth/me", null, accessToken("client")).statusCode()).isEqualTo(200);
+    }
 
     @BeforeEach
     void fixtures() {
