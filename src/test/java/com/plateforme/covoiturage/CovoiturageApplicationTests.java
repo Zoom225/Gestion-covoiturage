@@ -24,10 +24,27 @@ class CovoiturageApplicationTests {
 	@Autowired ZoneRepository zones;
 	@Autowired ClientRepository clients;
 	@Autowired VehiculeRepository vehicules;
+	@Autowired javax.sql.DataSource dataSource;
+
+	@Test
+	void upgradesV1WithoutChangingExistingReferentials() {
+		// Schéma isolé de la même base éphémère pour simuler une installation du lot 1.
+		var versionOne = Flyway.configure().dataSource(dataSource).schemas("upgrade_test")
+			.defaultSchema("upgrade_test").target("1").load();
+		versionOne.migrate();
+		jdbc.update("insert into upgrade_test.zone(id, nom) values (1, 'Zone existante')");
+		jdbc.update("insert into upgrade_test.client(numero, categorie, actif, zone_id) values ('C0001', 'LOCAL', true, 1)");
+		var versionTwo = Flyway.configure().dataSource(dataSource).schemas("upgrade_test")
+			.defaultSchema("upgrade_test").target("2").load();
+		assertThat(versionTwo.migrate().migrationsExecuted).isEqualTo(1);
+		assertThat(versionTwo.validateWithResult().validationSuccessful).isTrue();
+		assertThat(jdbc.queryForObject("select numero from upgrade_test.client", String.class)).isEqualTo("C0001");
+		assertThat(jdbc.queryForObject("select count(*) from upgrade_test.compte", Long.class)).isZero();
+	}
 
 	@Test
 	void contextLoads() {
-		assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("1");
+		assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
 		assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
 		assertThat(flyway.migrate().migrationsExecuted).isZero();
 		assertThat(jdbc.queryForObject("select version()", String.class)).contains("PostgreSQL 16.6");
