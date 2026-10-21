@@ -86,9 +86,34 @@ Support de consultation retenu : comptes-demo.local.md est le registre privé pr
 Preuves à développer : AC32–AC38 dans les [tests d'acceptation](tests-acceptation.md), notamment absence de données de démonstration en production et en combinaison de profils. Contribution AA6 (sécurité), AA10 (tests à réaliser) et AA11 (documentation).
 
 
+## 3 ter. DEC-COMPTES-003 — e-mail ADMIN et matricule CLIENT
+
+**Décision fonctionnelle et choix techniques validés par le responsable ; mise en œuvre progressive.**
+
+ADMIN GLOBAL/LOCAL : Compte.identifiant contiendra l'e-mail en minuscules, avec unicité insensible à la casse.
+CLIENT VIP/LOCAL/OCCASIONNEL : Compte.identifiant contiendra Client.numero, stocké en majuscules ; saisie en minuscules acceptée.
+Un seul AuthService, PasswordEncoder BCrypt et JWT existants ; Compte.id et Client.id conservés.
+Le rôle, la catégorie et le périmètre viennent de PostgreSQL, jamais de la saisie ou du navigateur.
+
+Trois séquences PostgreSQL indépendantes V/C/O ; minimum quatre chiffres puis croissance ; historique et aucune réattribution.
+Un changement de catégorie autorisé nécessitera nouveau matricule, mise à jour du login et historique dans une transaction.
+Aucun changement silencieux des comptes préexistants.
+
+Cette décision remplace la séparation login/matricule de l'A2 historique sans effacer cette ancienne décision.
+DEC-COMPTES-001 conserve le mot de passe choisi pour l'inscription OCCASIONNEL et les parcours d'invitation normaux.
+DEC-COMPTES-002 garde l'isolation fictive et l'interdiction de production ; la formule fictive s'applique aux matricules CLIENT.
+Les mots de passe fictifs ADMIN sont ceux expressément retenus dans la fiche privée, sans dérivation depuis l'e-mail.
+Aucune valeur concrète du registre privé n'est publiée.
+
+**Lot 1 livré sur branche :** V3, séquences, réservations et historique ; aucune nouvelle résolution du login, transition de catégorie ou création de compte.
+Voir [implémentation, limites et tests du lot](lot-1-numerotation.md). Longueurs/normalisation détaillée, reprise des anciens comptes,
+permissions et effets des transitions restent à préciser avant les lots correspondants.
+
 ## 4. Décisions A1–A9
 
 ### A1 — numérotation
+
+**Actualisation lot 1 :** trois séquences indépendantes validées ; V3 implémente la réservation et l'historique. Les mentions de séquence à confirmer ci-dessous sont historiques. Voir le dossier du lot.
 
 **VALIDÉ :** V pour VIP, C pour LOCAL, O pour OCCASIONNEL ; minimum quatre chiffres ; génération automatique avec séquences PostgreSQL ; unicité, non-réutilisation, conservation de l'historique lors des changements de catégorie ; jamais count()+1.
 
@@ -101,6 +126,8 @@ RM09–RM11 écrivent Vxxxx/Cxxxx/Oxxxx ; l'énoncé demande un préfixe suivi d
 Backend : générateur partagé et transitions transactionnelles. PostgreSQL : futures séquences et historique, audit des numéros et initialisation au-delà des valeurs déjà attribuées, y compris les écritures concurrentes pendant la transition. Angular : numéro en lecture seule. Tests AC07–AC09/AC20 ; RM09–RM11/RM58–RM60.
 
 ### A2 — identifiant de connexion
+
+**Historique :** le login distinct du matricule décrit ci-dessous est remplacé par DEC-COMPTES-003 pour la cible. Le code de connexion reste inchangé dans le lot 1.
 
 **VALIDÉ :** unique, distinct du numéro client et comparé sans distinction de casse. Préserver les identifiants existants ; audit des collisions après normalisation avant toute migration.
 
@@ -193,7 +220,7 @@ Ces recommandations ne sont pas des permissions supplémentaires.
 
 | Réf. | Ce que les sources fixent / ce qui manque | Recommandation à valider | Impacts backend / PostgreSQL / Angular | Tests |
 |---|---|---|---|---|
-| P01 | Préfixes et minimum quatre validés ; séquences commune ou indépendantes, maximum et numéro courant après transition ouverts | Séquences par catégorie, historique unique, id Client stable et format extensible | Générateur / reprise et réservation des anciens numéros / lecture seule | AC07–AC09/AC20, limites maximales après choix |
+| P01 | Trois séquences indépendantes et nouveau matricule lors des futures transitions validés ; maximum métier et effets détaillés des transitions ouverts | Séquences par catégorie, historique unique, id Client stable et format extensible | Générateur / reprise et réservation des anciens numéros / lecture seule | AC07–AC09/AC20, limites maximales après choix |
 | P02 | Login insensible à la casse validé ; Unicode, espaces, recherche partielle, modification du login non définis | Affichage original, clé normalisée cohérente après audit | Normalisation partagée / détecter collisions avant migration / formulaire et recherche | AC06/AC29, collisions selon normalisation retenue |
 | P03 | E-mail public obligatoire ; pas de zone automatique ; autres champs, unicité e-mail et zone manuelle non définis | DTO minimal identifiant/e-mail/mot de passe ; zone provisoirement exclue | Validation / coordonnées et éventuels index / formulaire minimal | AC01/AC04/AC05 |
 | P04 | V2 impose au plus un Compte par Client ; nombre de comptes par personne non défini | Conserver relation existante ; définir la notion de personne avant assouplissement | Politique anti-doublon / UNIQUE client_id conservé / conflits explicites | AC06/AC29 et cas multi-comptes futurs |

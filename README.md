@@ -371,3 +371,7 @@ Ce lot ne livre aucune nouvelle règle métier, aucun module clients/zones et au
 compte de démonstration. Aucun commit, push ni pull request n'est effectué avant
 validation. Les résultats ci-dessus sont locaux ; la CI de ce lot reste à exécuter
 après sa publication autorisée.
+
+## Lot 1 — numérotation des clients
+
+La migration additive V3 et le générateur transactionnel V/C/O sont décrits dans le [dossier du lot](docs/gestion-comptes/lot-1-numerotation.md). V1/V2, les anciens logins, JWT et BCrypt sont conservés. Les passages précédents décrivent les lots antérieurs ; la nouvelle connexion e-mail ADMIN / matricule CLIENT reste à réaliser. Aucun compte de démonstration ni amorçage au démarrage.
