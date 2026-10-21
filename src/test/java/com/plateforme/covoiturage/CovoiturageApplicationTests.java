@@ -25,6 +25,13 @@ class CovoiturageApplicationTests {
 	@Autowired ClientRepository clients;
 	@Autowired VehiculeRepository vehicules;
 	@Autowired javax.sql.DataSource dataSource;
+	@Autowired org.springframework.core.env.Environment environment;
+
+	@Test
+	void documentationIsDisabledByDefault() {
+		assertThat(environment.getProperty("springdoc.api-docs.enabled", Boolean.class)).isFalse();
+		assertThat(environment.getProperty("springdoc.swagger-ui.enabled", Boolean.class)).isFalse();
+	}
 
 	@Test
 	void upgradesV1WithoutChangingExistingReferentials() {
