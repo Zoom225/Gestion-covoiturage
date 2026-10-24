@@ -1,5 +1,8 @@
 # Gestion centralisée des comptes — décisions
 
+**État courant — issue [#23](https://github.com/Zoom225/Gestion-covoiturage/issues/23), PR [#24](https://github.com/Zoom225/Gestion-covoiturage/pull/24) :** DEC-COMPTES-006 valide les créations GLOBAL/LOCAL, les activités initiales et la politique de mot de passe. Les quatre POST de création/renvoi/acceptation et le bootstrap opérateur sont implémentés. V8 additive ; V1–V7 conservées. Voir [contrats, sécurité, modèle et preuves](parcours-invitations-preparation.md). Les instantanés des lots antérieurs ci-dessous restent historiques.
+
+
 **Actualisation — lot 3C.2 / issue [#21](https://github.com/Zoom225/Gestion-covoiturage/issues/21) :** DEC-COMPTES-005 livre le service interne de preuves d'invitation (32 octets, SHA-256, durée configurable, révocation/renouvellement et consommation atomique). Aucun endpoint, e-mail, mot de passe ou compte créé. Voir [modèle, concurrence, tests et limites AA](lot-3c2-invitations.md).
 
 
@@ -18,6 +21,32 @@ Navigation : [permissions](matrice-permissions.md), [contrats REST](contrats-api
 
 **Actualisation documentaire — lot 3A / issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13), 24 octobre 2026 :** base origin/master 39a7b6b (PR #10 et #12 fusionnées). Aucun endpoint administratif livré par ce lot. Le matricule CLIENT est le login généré ; l'e-mail de connexion ADMIN est distinct du contact CLIENT. Les droits de lecture confirmés et les modalités encore ouvertes sont séparés dans les [contrats de consultation](contrats-api.md#5-consultation-administrative--implémentée-lot-3b).
 
+## DEC-COMPTES-006 — création administrative et acceptation validées
+
+**VALIDÉ par le responsable le 24 octobre 2026**, après revue de l'énoncé et du cahier.
+Cette évolution précise P05/P07/P08/P09 sans renuméroter RM01–RM60 ni effacer DEC-COMPTES-001/002/003/004/005.
+
+1. GLOBAL crée les clients VIP, LOCAL, OCCASIONNEL et les administrateurs.
+2. Tout LOCAL crée uniquement des clients LOCAL de sa propre zone, sans habilitation supplémentaire.
+   Il ne crée ni VIP, ni OCCASIONNEL, ni administrateur. Cette précision de création ne résout pas
+   les autres transitions de catégorie/habilitations historiques d'A4/P05.
+3. Création administrative : Compte.actif=true et, si CLIENT, Client.actif=true ; état INVITE,
+   sans mot de passe, donc aucune authentification. L'acceptation ne réactive jamais les activités.
+4. Nouveau mot de passe par invitation : au moins 15 caractères Unicode (points de code),
+   au plus 72 octets UTF-8, non blanc, aucune règle de composition supplémentaire.
+   Aucun changement rétroactif des mots de passe ou du login des comptes existants.
+
+Les renvois appliquent les mêmes droits de création au profil cible, après visibilité SQL ;
+destinataire enregistré uniquement. L'adresse de contact CLIENT n'est pas son login et n'est pas
+ajoutée au DTO administratif commun. Le parcours d'invitation ne déclare pas une preuve e-mail
+distincte de l'inscription publique livrée. DEC-COMPTES-001 et les règles publiques restent intactes.
+DEC-COMPTES-002 demeure une exception fictive isolée ; aucun compte fictif n'est créé par ce lot.
+
+V8 ajoute un contact nullable sans conversion des comptes préexistants. Détails et limites dans le
+[dossier de réalisation](parcours-invitations-preparation.md). La création/acceptation ne modifie ni
+Client.id/Compte.id, ni matricule, catégorie, zone ou activités au-delà de la création validée.
+
+
 ## 1. Références
 
 - Énoncé « Gestion d'un réseau de covoiturage multi-zones », fichier externe ../Enonce_CarShare_Network.docx.
@@ -29,7 +58,7 @@ Navigation : [permissions](matrice-permissions.md), [contrats REST](contrats-api
 
 L'énoncé définit catégories, préfixes, périmètres, authentification et mots de passe hachés ; il ne définit pas l'inscription autonome ni toutes les opérations administratives. DEC-COMPTES-001 est une évolution explicite. RM01 conserve sa portée sur les opérations protégées ; la nouvelle inscription sera une exception publique expressément limitée.
 
-## 2. Existant à conserver
+## 2. Existant à conserver — instantané historique avant le parcours de l'issue #23
 
 | Élément inspecté | Fonctionnement constaté | Limite actuelle |
 |---|---|---|
@@ -220,7 +249,7 @@ Backend : compléter la même classe AdminAuthorization pour la consultation des
 
 L'invitation n'est pas déclarée automatiquement équivalente à une vérification d'e-mail : les modalités ouvertes doivent être précisées avant développement. La création opérateur du premier GLOBAL réel reste la procédure distincte A5/P06.
 
-Conserver la limite applicable de 72 octets UTF-8 et refuser tout dépassement sans troncature. La longueur en caractères seule ne suffit pas. Politique minimale et durées : P08.
+Conserver la limite applicable de 72 octets UTF-8 et refuser tout dépassement sans troncature. La longueur en caractères seule ne suffit pas. DEC-COMPTES-006 fixe désormais le minimum à 15 caractères Unicode pour les nouveaux mots de passe par invitation ; les autres politiques et durées d'exploitation restent P08.
 
 Backend : cycle de vie des comptes réutilisant l'encodeur et AuthService ; consommation atomique et empreinte des jetons recommandées, sans mécanisme JWT de connexion parallèle. PostgreSQL : historiquement V2 imposait un hash NOT NULL ; V5 (DEC-COMPTES-004) autorise NULL uniquement pour INVITE et impose un hash BCrypt de format/coût valide pour INITIALISE. Aucun mot de passe par défaut ; le socle des preuves est livré au lot 3C.2 ; acceptation avec BCrypt et livraison d'e-mail restent à spécifier. Angular : parcours invitation/changement/réinitialisation futurs ; ne pas conserver le mot de passe après soumission. Tests AC16/AC17/AC24/AC27 ; RM01–RM03/RM60.
 
@@ -230,7 +259,7 @@ Complément documentaire : DEC-COMPTES-002 autorise la convention de mot de pass
 
 **VALIDÉ :** Compte.actif = accès technique ; Client.actif = état métier. Conserver les deux contrôles ; modifier l'un ne change pas implicitement l'autre. Afficher les deux et l'accès effectif ; historiser les modifications.
 
-Accès CLIENT = INITIALISE ET Compte.actif ET Client.actif ; ADMIN = INITIALISE ET Compte.actif, sous les autres contrôles JWT. L'état d'initialisation est indépendant des deux activités ; ni un changement d'état ni V5 ne les réactive. La vérification d'e-mail précède l'activation publique sans réactiver un client métier désactivé. Réactivation, droits de bascule et valeur initiale Client.actif : P09.
+Accès CLIENT = INITIALISE ET Compte.actif ET Client.actif ; ADMIN = INITIALISE ET Compte.actif, sous les autres contrôles JWT. L'état d'initialisation est indépendant des deux activités ; ni un changement d'état ni V5 ne les réactive. La vérification d'e-mail précède l'activation publique sans réactiver un client métier désactivé. DEC-COMPTES-006 fixe les activités initiales administratives à true, sans accès tant que INVITE ; réactivation et droits de bascule restent P09.
 
 Backend : changement explicite et audit, effet immédiat via relecture en base même avec ancien JWT. PostgreSQL : booléens conservés, historique futur. Angular : colonnes distinctes et aucun bouton ambigu « utilisateur actif ». Tests AC12/AC13/AC22/AC25 ; RM13/RM60.
 
@@ -260,11 +289,11 @@ Ces recommandations ne sont pas des permissions supplémentaires.
 | P02 | Lots 2/3B : login et recherche administrative exacte sans casse PostgreSQL lower ; e-mail minuscule, matricule majuscule, aucun trim. Modification du login toujours ouverte ; recherche partielle non retenue dans 3B | Conserver la canonisation existante pour les futures écritures ; aucun changement silencieux | V4 conservée / recherche exacte utilisant lower / champ de recherche commun | AC-AUTH01–AC-AUTH12 ; AC-CONS06/AC-CONS07 |
 | P03 | E-mail public obligatoire ; pas de zone automatique ; autres champs, unicité e-mail et zone manuelle non définis | DTO public minimal e-mail de contact/mot de passe ; matricule et login CLIENT générés par le serveur, aucun identifiant libre ; zone provisoirement exclue (correction lot 3A, DEC-COMPTES-003) | Validation / coordonnées et éventuels index / formulaire minimal | AC01/AC04/AC05 |
 | P04 | V2 impose au plus un Compte par Client ; nombre de comptes par personne non défini | Conserver relation existante ; définir la notion de personne avant assouplissement | Politique anti-doublon / UNIQUE client_id conservé / conflits explicites | AC06/AC29 et cas multi-comptes futurs |
-| P05 | VIP GLOBAL, LOCAL GLOBAL ou LOCAL habilité ; conditions VIP, habilitation, autres transitions et réservations futures ouvertes | Aucune condition commerciale inventée ; matrice des transitions et analyse des réservations | Politique transactionnelle / audit et concurrence / motif et actions | AC18–AC20 et effets futurs à spécifier |
+| P05 | Création validée DEC-006 : VIP/OCCASIONNEL GLOBAL ; LOCAL GLOBAL ou tout LOCAL de sa zone, sans habilitation supplémentaire. Conditions VIP et transitions restent ouvertes | Ne pas déduire les transitions du droit de création | Politique unique et transactions existantes | Tests HTTP création ; AC18–AC20 restent partiellement futurs |
 | P06 | Modèle invité sans hash VALIDÉ et livré au lot 3C.1 (DEC-COMPTES-004/V5) ; preuves V6 livrées au lot 3C.2 ; procédure premier GLOBAL, acceptation utilisateur/envoi, verrou du dernier GLOBAL et modification de périmètre toujours ouverts | Amorçage ponctuel et réduction des GLOBAL à préciser ; aucun mot de passe initial inventé | Réutiliser l'état INVITE/INITIALISE / futurs jetons séparés de V5 / aucun endpoint de création livré | AC-INIT01–AC-INIT08 ; AC16/AC17/AC22/AC23 futurs |
-| P07 | Lot 3B : GLOBAL réseau ; LOCAL seulement CLIENT de sa zone, aucun ADMIN ni sans-zone. Création par LOCAL et CRUD zones restent non détaillés | Lecture fixée par le responsable ; aucun droit de mutation supplémentaire ; profil personnel via me | Politique unique AdminAuthorization et CompteRepository filtré / aucune migration / tableau limité au contrat | AC14/AC15 ; AC-CONS01–AC-CONS08 automatisés ; AC21 pour mutations futures |
-| P08 | Lot 3C.2 : 32 octets, SHA-256, durée configurable (dev 24 h), révocation/renouvellement et consommation unique PostgreSQL livrés ; durée production, politique de mot de passe et anti-abus ouverts | Configurer explicitement la durée hors dev ; valider le futur parcours de mot de passe et la politique JWT après changement | V6 et InvitationService ; aucune acceptation publique ni livraison / preuves en base / Angular futur | AC-INV01–AC-INV08 ; AC10/AC24/AC26/AC27 restent partiellement futurs |
-| P09 | Deux activités et vérification avant activation ; réactivation, droits de bascule et activité métier initiale ouverts | Activation conditionnelle sans réactiver implicitement Client | Statuts / historique et préconditions / affichage des deux états | AC12/AC13/AC25 |
+| P07 | Lecture lot 3B conservée ; créations et renvois DEC-006 validés, GLOBAL réseau / LOCAL uniquement CLIENT LOCAL de sa zone. CRUD zones ouvert | Aucun droit de création ADMIN pour LOCAL | AdminAuthorization et périmètre SQL | Tests HTTP 401/403/404 et renvoi |
+| P08 | DEC-006 : nouveaux passwords invitation min 15 caractères Unicode, max 72 octets UTF-8 sans composition ; pas rétroactif. V6 et durée dev 24 h conservées | Durée hors dev explicite ; anti-abus et autres politiques restent ouverts | AuthService et PasswordEncoder uniques | Tests HTTP limites, expiration, concurrence et JWT |
+| P09 | DEC-006 : activités initiales administratives vraies, accès bloqué par INVITE ; acceptation sans réactivation. Les droits de modification/réactivation restent ouverts | Séparer initialisation et activités | V5/V8, transaction et relecture des états | Tests HTTP états/rollback ; AC25 futur |
 | P10 | Cinq destinations et mémoire validées ; aucun frontend trouvé | Lot Angular distinct après contrats ; pas de refresh token inventé | Login/me conservés / aucun changement SQL imposé / session et écrans partagés | AC28/AC30, responsive et accessibilité |
 | P11 | E-mails nécessaires ; prestataire, expéditeur, renvoi et reprise d'échec non définis | Livraison après commit avec reprise fiable à concevoir ; aucun secret ou jeton complet journalisé | Envoi / livraison persistante si retenue / confirmation et renvoi selon politique | AC10/AC16/AC27, reprise sans doublon |
 | P12 | VALIDÉ lot 3B : index 0 ; défaut 20 ; taille 1–100 ; compteId croissant ; recherche exacte sans casse ; rôle/catégorie/zone/statuts par intersection ; 404 uniforme absent/invisible ; CLIENT authentifié 403 | Appliquer ces choix sans ajouter recherche partielle, tri personnalisable ou accès ADMIN pour LOCAL | WHERE de périmètre et filtres commun au contenu et count ; détail filtré ; 400 contrôlés / V1–V4 inchangées / contrat utilisable par futur Angular | AC-CONS01–AC-CONS08 automatisés dans AdminCompteIntegrationTests |

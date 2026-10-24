@@ -1,5 +1,8 @@
 # Matrice des permissions — gestion des comptes
 
+**État courant — issue [#23](https://github.com/Zoom225/Gestion-covoiturage/issues/23), PR [#24](https://github.com/Zoom225/Gestion-covoiturage/pull/24) :** DEC-COMPTES-006 valide les créations GLOBAL/LOCAL, les activités initiales et la politique de mot de passe. Les quatre POST de création/renvoi/acceptation et le bootstrap opérateur sont implémentés. V8 additive ; V1–V7 conservées. Voir [contrats, sécurité, modèle et preuves](parcours-invitations-preparation.md). Les instantanés des lots antérieurs ci-dessous restent historiques.
+
+
 **Actualisation — lot 3C.2 / issue [#21](https://github.com/Zoom225/Gestion-covoiturage/issues/21) :** DEC-COMPTES-005 livre le service interne de preuves d'invitation (32 octets, SHA-256, durée configurable, révocation/renouvellement et consommation atomique). Aucun endpoint, e-mail, mot de passe ou compte créé. Voir [modèle, concurrence, tests et limites AA](lot-3c2-invitations.md).
 
 
@@ -17,7 +20,7 @@
 [Décisions et références](decisions.md) · [Contrats proposés](contrats-api.md) · [Tests](tests-acceptation.md).
 Issue [#7](https://github.com/Zoom225/Gestion-covoiturage/issues/7), 21 octobre 2026.
 
-Cette matrice distingue droits validés et parcours futurs. Login/me et les deux GET administratifs de consultation sont livrés au lot 3B ; aucune création ou mutation administrative ne l'est.
+Cette matrice distingue droits validés et parcours futurs. Login/me, les deux GET administratifs du lot 3B et les quatre POST de DEC-COMPTES-006 sont livrés ; les autres mutations restent distinctes.
 
 **Actualisation documentaire — lot 3A / issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13), 24 octobre 2026 :** base origin/master 39a7b6b (PR #10 et #12 fusionnées). Aucun endpoint administratif livré par ce lot. Le matricule CLIENT est le login généré ; l'e-mail de connexion ADMIN est distinct du contact CLIENT. Les droits de lecture confirmés et les modalités encore ouvertes sont séparés dans les [contrats de consultation](contrats-api.md#5-consultation-administrative--implémentée-lot-3b).
 
@@ -44,9 +47,9 @@ Cette matrice distingue droits validés et parcours futurs. Login/me et les deux
 | Consulter les comptes administrateurs via liste ou détail administratifs | INTERDIT | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ | Lot 3B validé ; inclut l'exclusion de son propre compte ADMIN pour LOCAL, profil personnel via me |
 | Consulter un compte hors de sa zone administrative | INTERDIT | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ : réseau | A6 ; profil personnel reste disponible via me |
 | Gestion administrative d'un VIP/OCCASIONNEL sans zone | INTERDIT | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ pour opérations validées | A6 ; ne définit pas les opérations encore ouvertes |
-| Création administrative d'un client OCCASIONNEL | INTERDIT | INTERDIT | INTERDIT | INTERDIT | À PRÉCISER pour client zoné ; INTERDIT sans zone | AUTORISÉ | BF02/RM49/RM51/A6 ; P03/P07 pour rattachement |
-| Création administrative d'un client LOCAL | INTERDIT | INTERDIT | INTERDIT | INTERDIT | À PRÉCISER pour la création ; attribution conditionnée par HABILITATION et ZONE | AUTORISÉ | A4 valide l'attribution, pas tous les détails du droit de création ; P05/P06/P07 |
-| Création administrative d'un client VIP | INTERDIT | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ | A4 ; conditions VIP P05 non inventées |
+| Création administrative d'un client OCCASIONNEL | INTERDIT | INTERDIT | INTERDIT | INTERDIT | INTERDIT (DEC-006) | AUTORISÉ | BF02/RM49/RM51/A6 ; P03/P07 pour rattachement |
+| Création administrative d'un client LOCAL | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ : sa zone, sans habilitation supplémentaire (DEC-006) | AUTORISÉ | A4 valide l'attribution, pas tous les détails du droit de création ; P05/P06/P07 |
+| Création administrative d'un client VIP | INTERDIT | INTERDIT | INTERDIT | INTERDIT | INTERDIT (DEC-006) | AUTORISÉ | A4 ; conditions VIP P05 non inventées |
 | Attribution de catégorie VIP | INTERDIT | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ | A4 ; trace auteur/date/motif |
 | Attribution de catégorie LOCAL | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ : HABILITATION, source et cible ZONE | AUTORISÉ | A4/A6 ; transitions détaillées P05 ; client sans zone exclu du LOCAL |
 | Autres changements de catégorie / rétrogradations | INTERDIT | INTERDIT | INTERDIT | INTERDIT | À PRÉCISER dans ZONE | À PRÉCISER | P05 ; pas de droit dérivé d'une simple cible LOCAL |
@@ -112,3 +115,7 @@ Les statuts des comptes consultés sont des données de lecture A8 ; ils ne donn
 Les comptes préexistants conservent les contrôles actuels. L'absence de métadonnées de vérification d'e-mail ou d'invitation ne devient pas un motif rétroactif de refus ; une telle évolution exige une décision et une migration adaptées. L'articulation précise invitation/vérification d'e-mail pour les nouveaux comptes administratifs reste ouverte en P06/P11. Le jeu fictif isolé relève exclusivement de DEC-COMPTES-002.
 
 Pour les tests conditionnels, voir AC18–AC25 et les références P01–P11 dans les [décisions](decisions.md).
+
+## Précisions courantes DEC-COMPTES-006
+
+Renvoi d’invitation : mêmes droits que la création du profil cible, destinataire enregistré seulement, après visibilité SQL. LOCAL ne renvoie ni VIP/OCCASIONNEL ni ADMIN. INVITE actif et client actif requis ; aucune réactivation. Accepter son invitation est public avec preuve personnelle, sans JWT retourné. Les habilitations historiques d’A4 concernent les transitions encore ouvertes, pas la création LOCAL désormais validée.

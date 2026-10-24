@@ -20,11 +20,15 @@ public class AuthService {
     private final PasswordEncoder passwords;
     private final TokenService tokens;
     private final String dummyHash;
+    private final InvitationService invitations;
+    private final com.plateforme.covoiturage.repository.InvitationOutboxRepository outbox;
 
-    public AuthService(CompteRepository comptes, PasswordEncoder passwords, TokenService tokens) {
+    public AuthService(CompteRepository comptes, PasswordEncoder passwords, TokenService tokens, InvitationService invitations, com.plateforme.covoiturage.repository.InvitationOutboxRepository outbox) {
         this.comptes = comptes;
         this.passwords = passwords;
         this.tokens = tokens;
+        this.invitations = invitations;
+        this.outbox = outbox;
         this.dummyHash = passwords.encode(java.util.UUID.randomUUID().toString());
     }
 
@@ -59,6 +63,25 @@ public class AuthService {
 
     public ProfileResponse me(ComptePrincipal principal) {
         return principal.profile();
+    }
+
+
+    /** Consommation et BCrypt atomiques ; politique de mot de passe DEC-COMPTES-006. */
+    @Transactional
+    public void accepterInvitation(String jeton, String password) {
+        if (password == null || password.isBlank() || password.codePointCount(0, password.length()) < 15
+                || password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new com.plateforme.covoiturage.exception.InvalidAccountRequestException();
+        }
+        Long compteId = invitations.consommer(jeton);
+        // La consommation conserve le verrou compte jusqu'au commit englobant.
+        boolean compteActif = comptes.activiteCompteVerrouillee(compteId).orElse(false);
+        boolean clientActif = comptes.activiteClientVerrouillee(compteId).orElse(true);
+        if (!compteActif || !clientActif
+                || comptes.initialiserSiActif(compteId, passwords.encode(password)) != 1) {
+            throw new com.plateforme.covoiturage.exception.InvitationInvalideException();
+        }
+        outbox.cancelForAccount(compteId);
     }
 
     private static BadCredentialsException invalidCredentials() {
