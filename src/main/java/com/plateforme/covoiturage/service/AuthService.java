@@ -33,7 +33,7 @@ public class AuthService {
         if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
             throw invalidCredentials();
         }
-        var compte = comptes.findByIdentifiant(request.identifiant()).orElse(null);
+        var compte = comptes.findByIdentifiantIgnoringCase(request.identifiant()).orElse(null);
         boolean matches = passwords.matches(request.password(), compte == null ? dummyHash : compte.getPasswordHash());
         if (!matches || compte == null || !isActive(compte)) {
             throw invalidCredentials();

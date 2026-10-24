@@ -127,7 +127,7 @@ class ClientNumberingIntegrationTests {
         assertThatThrownBy(() -> transaction.execute(status -> {
             String number = generator.reserve(CategorieClient.VIP);
             Client client = clients.saveAndFlush(new Client(number, CategorieClient.VIP, true, null));
-            comptes.saveAndFlush(new Compte("legacy-test-login", passwords.encode(UUID.randomUUID().toString()),
+            comptes.saveAndFlush(new Compte(number, passwords.encode(UUID.randomUUID().toString()),
                     true, RoleTechnique.CLIENT, client, null, null));
             throw new IllegalStateException("Injected failure");
         })).isInstanceOf(IllegalStateException.class);

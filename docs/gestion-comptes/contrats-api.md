@@ -1,5 +1,8 @@
 # Contrats REST — gestion centralisée des comptes
 
+**État courant — lot 2 / #11 :** POST login accepte l'e-mail ADMIN ou le matricule CLIENT sans distinction de casse ; GET me conserve les droits issus de PostgreSQL. V4 impose stockage canonique et cohérence Client/Compte sans réécrire les anciens comptes. Les formulations antérieures décrivent l'historique. Voir [contrat livré et tests AC-AUTH](lot-2-authentification.md).
+
+
 **Actualisation lot 1 / DEC-COMPTES-003 :** la cible est e-mail ADMIN et matricule CLIENT ; les descriptions antérieures d'un login client indépendant sont historiques. Ce lot livre uniquement les séquences et l'historique, sans changer login/me ou les permissions. Les tests automatisés AC-NUM01–AC-NUM12 sont décrits dans le [dossier du lot](lot-1-numerotation.md) ; ils sont distincts des scénarios documentaires ci-dessous.
 
 
@@ -39,7 +42,6 @@ DTO conceptuel RegisterRequest :
 
 | Champ | Obligatoire | Validation / responsabilité |
 |---|---|---|
-| identifiant | Oui | Non blanc, au plus 100 caractères comme l'existant ; normalisation et unicité A2 après P02 |
 | email | Oui | Contact valide à vérifier ; longueur maximale et unicité à préciser P03 ; ne vaut pas automatiquement identifiant de connexion |
 | password | Oui | Non blanc ; limite BCrypt de 72 octets UTF-8, sans troncature ; politique minimale P08 |
 
@@ -50,7 +52,7 @@ Aucun champ de rôle, catégorie, numéro, actif, clientId, périmètre ou zone 
 Traitement attendu :
 
 1. Valider le DTO et les protections anti-abus ; fixer CLIENT et OCCASIONNEL côté service.
-2. Vérifier l'identifiant normalisé et conserver la protection UNIQUE finale contre la concurrence.
+2. Le visiteur ne fournit pas de login libre ; le matricule généré sera le login CLIENT. Conserver les protections UNIQUE finales ; unicité éventuelle du contact P03.
 3. Générer un numéro O par séquence, hacher le mot de passe avec l'encodeur existant.
 4. Dans une transaction, créer Client, Compte sans accès et preuve de vérification ; toutes les écritures associées réussissent ou sont annulées.
 5. Préparer la livraison d'e-mail selon P11 ; aucun token de vérification retourné au navigateur.
@@ -68,7 +70,7 @@ Dépendances bloquantes : P01/P02/P03/P04/P08/P09/P11. Les routes de validation 
 
 LoginRequest existant : identifiant non blanc, maximum 100 caractères ; password non blanc, maximum 72 caractères en validation DTO, complété par un contrôle de 72 octets UTF-8 dans AuthService.
 
-Comportement constaté : recherche exacte de l'identifiant, comparaison BCrypt, erreur générique pour inconnu/mot de passe incorrect/compte ou client inactif. A2 prévoit l'insensibilité à la casse après migration cohérente ; **elle n'est pas livrée dans cette issue**.
+Comportement livré au lot 2 : recherche PostgreSQL sans distinction de casse, e-mail pour ADMIN et matricule pour CLIENT ; comparaison BCrypt et erreur générique pour inconnu/mot de passe incorrect/compte ou client inactif. V4 garantit unicité normalisée, stockage canonique et correspondance Client/Compte ; aucun ancien alias accepté implicitement.
 
 Réponse existante : 200 avec accessToken, tokenType Bearer, expiresIn en secondes et Cache-Control no-store. JWT HS256 existant : sub = id Compte, émetteur/audience/dates/jti, sans rôle/catégorie/zone faisant autorité. La configuration actuelle a une durée par défaut de 15 minutes ; la durée fonctionnelle de session reste P08, sans modification ici.
 
@@ -133,7 +135,7 @@ Même DTO et mêmes règles de rôle/type/périmètre que la liste. id positif v
 
 ### POST /api/admin/clients
 
-CreateClientRequest conceptuel : identifiant, email de contact pour invitation, categorie, zoneClientId conditionnel. L'obligation de contact pour l'invitation est une proposition technique à stabiliser avec P11 ; elle ne transforme pas l'e-mail en login.
+CreateClientRequest conceptuel : email de contact pour invitation, categorie, zoneClientId conditionnel ; login CLIENT fixé au matricule généré, aucun identifiant libre. L'obligation de contact pour l'invitation est une proposition technique à stabiliser avec P11 ; elle ne transforme pas l'e-mail en login.
 
 Le rôle CLIENT, le numéro et les états de sécurité sont imposés côté serveur ; aucun password administrativement choisi. LOCAL exige une zone existante. VIP uniquement par GLOBAL. L'attribution LOCAL est autorisée à GLOBAL ou LOCAL habilité dans sa zone selon P05 ; le droit précis de création d'un nouveau client par LOCAL reste P07 et ne se déduit pas automatiquement du droit d'attribution. Un LOCAL ne peut créer un client sans zone ; son droit sur un OCCASIONNEL zoné reste également P07.
 
@@ -145,7 +147,7 @@ Cette création ne définit pas implicitement les transitions ultérieures de ca
 
 ### POST /api/admin/administrateurs
 
-CreateAdministrateurRequest conceptuel : identifiant, contact d'invitation, perimetreAdmin GLOBAL/LOCAL, zoneAdminId requise pour LOCAL et absente pour GLOBAL. role ADMIN fixé par le serveur ; aucun clientId, categorie ou mot de passe fourni par le créateur.
+CreateAdministrateurRequest conceptuel : e-mail de connexion canonique, contact d'invitation, perimetreAdmin GLOBAL/LOCAL, zoneAdminId requise pour LOCAL et absente pour GLOBAL. role ADMIN fixé par le serveur ; aucun clientId, categorie ou mot de passe fourni par le créateur.
 
 Seul le principal ADMIN GLOBAL relu en base peut appeler ce parcours. Un ADMIN LOCAL reçoit 403, même pour créer un LOCAL, même si le JSON déclare GLOBAL. La route ne sert pas à amorcer le premier GLOBAL.
 
