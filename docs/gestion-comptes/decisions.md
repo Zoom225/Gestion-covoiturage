@@ -8,6 +8,8 @@ Navigation : [permissions](matrice-permissions.md), [contrats REST](contrats-api
 
 **État courant — lot 2 / issue [#11](https://github.com/Zoom225/Gestion-covoiturage/issues/11) :** login/me appliquent DEC-COMPTES-003, avec recherche sans casse, stockage canonique et V4 sans conversion automatique. Les constats d'authentification exacte des lots précédents ci-dessous sont historiques. Voir [preuve, migration et limites](lot-2-authentification.md).
 
+**Actualisation documentaire — lot 3A / issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13), 24 octobre 2026 :** base origin/master 39a7b6b (PR #10 et #12 fusionnées). Aucun endpoint administratif livré par ce lot. Le matricule CLIENT est le login généré ; l'e-mail de connexion ADMIN est distinct du contact CLIENT. Les droits de lecture confirmés et les modalités encore ouvertes sont séparés dans les [contrats de consultation](contrats-api.md#5-consultation-administrative--proposée).
+
 ## 1. Références
 
 - Énoncé « Gestion d'un réseau de covoiturage multi-zones », fichier externe ../Enonce_CarShare_Network.docx.
@@ -169,7 +171,7 @@ Backend : création GLOBAL seule, invitation A7, invariant concurrent. PostgreSQ
 
 Appliquer le périmètre avant pagination aux lignes, totaux, compteurs, détails et modifications. Les filtres Angular se combinent avec les restrictions serveur sans les élargir. La zone administrative de gestion ne définit pas toutes les zones de réservation accessibles à un VIP/OCCASIONNEL : ces droits métier restent partiellement ouverts dans le cahier.
 
-Backend : compléter AdminAuthorization pour ressources sans zone et opérations réseau, sans politique concurrente. PostgreSQL : requêtes filtrées et index justifiés. Angular : données autorisées seulement. P05/P07 précisent les droits fins. Tests AC14/AC15/AC18/AC21 ; RM07/RM12/RM49/RM51/RM57.
+Backend : compléter la même classe AdminAuthorization pour la consultation des ressources sans zone et du réseau, sans service d'autorisation concurrent. Conserver le comportement de canManageZone pour les autres opérations ; ne pas supprimer globalement son contrôle de zone non nulle. PostgreSQL : requêtes filtrées et index justifiés. Angular : données autorisées seulement. P05/P07 précisent les droits fins. Tests AC14/AC15/AC18/AC21 ; RM07/RM12/RM49/RM51/RM57.
 
 ### A7 — mots de passe
 
@@ -224,15 +226,16 @@ Ces recommandations ne sont pas des permissions supplémentaires.
 |---|---|---|---|---|
 | P01 | Trois séquences indépendantes et nouveau matricule lors des futures transitions validés ; maximum métier et effets détaillés des transitions ouverts | Séquences par catégorie, historique unique, id Client stable et format extensible | Générateur / reprise et réservation des anciens numéros / lecture seule | AC07–AC09/AC20, limites maximales après choix |
 | P02 | Lot 2 : comparaison PostgreSQL lower, e-mail minuscule, matricule majuscule, sans trim et limite existante 100 caractères ; modification libre et recherche partielle non livrées | Garder la même canonisation pour toute future création et auditer avant reprise des anciens comptes | V4 sans réécriture / index fonctionnel et FK différée / champ commun | AC-AUTH01–AC-AUTH12 du dossier lot 2 ; AC06/AC29 historiques |
-| P03 | E-mail public obligatoire ; pas de zone automatique ; autres champs, unicité e-mail et zone manuelle non définis | DTO minimal identifiant/e-mail/mot de passe ; zone provisoirement exclue | Validation / coordonnées et éventuels index / formulaire minimal | AC01/AC04/AC05 |
+| P03 | E-mail public obligatoire ; pas de zone automatique ; autres champs, unicité e-mail et zone manuelle non définis | DTO public minimal e-mail de contact/mot de passe ; matricule et login CLIENT générés par le serveur, aucun identifiant libre ; zone provisoirement exclue (correction lot 3A, DEC-COMPTES-003) | Validation / coordonnées et éventuels index / formulaire minimal | AC01/AC04/AC05 |
 | P04 | V2 impose au plus un Compte par Client ; nombre de comptes par personne non défini | Conserver relation existante ; définir la notion de personne avant assouplissement | Politique anti-doublon / UNIQUE client_id conservé / conflits explicites | AC06/AC29 et cas multi-comptes futurs |
 | P05 | VIP GLOBAL, LOCAL GLOBAL ou LOCAL habilité ; conditions VIP, habilitation, autres transitions et réservations futures ouvertes | Aucune condition commerciale inventée ; matrice des transitions et analyse des réservations | Politique transactionnelle / audit et concurrence / motif et actions | AC18–AC20 et effets futurs à spécifier |
 | P06 | Premier GLOBAL opérateur, autres GLOBAL seuls, invitations ; procédure, invité sans hash et modification de périmètre ouverts | Amorçage ponctuel ; profil en attente explicite ; étendre la protection aux futures réductions du nombre de GLOBAL | Procédure / schéma invitation compatible sans changer V2 / invitation sans mot de passe admin | AC16/AC17/AC22/AC23 |
-| P07 | LOCAL sa zone, sans-zone GLOBAL ; droits précis de création des clients par LOCAL, CRUD zones et visibilité des comptes administrateurs non détaillés | Refus par défaut des droits non spécifiés ; arbitrage par opération | Autorisation / requêtes filtrées / écrans selon droits | AC14/AC15/AC21 ; CRUD zones après validation |
+| P07 | Lecture confirmée : GLOBAL réseau, LOCAL comptes CLIENT de sa zone ; clients sans zone réservés GLOBAL. Visibilité des comptes ADMIN pour LOCAL, création par LOCAL et CRUD zones non détaillés | Aucun droit supplémentaire avant arbitrage ; profil personnel via me. L'e-mail de login ADMIN est identifiant, pas le contact CLIENT | AdminAuthorization et requêtes filtrées / aucun nouveau schéma requis pour lire / tableau limité aux lignes et champs autorisés | AC14/AC15/AC21 ; AC-CONS01–AC-CONS08 pour la consultation |
 | P08 | Jetons limités à usage unique et limite BCrypt ; durées et politique minimale non fixées | Durées configurables et empreintes ; décider révocation après changement du mot de passe | Cycle de vie et anti-abus / consommation atomique / expiration et messages | AC10/AC24/AC26/AC27 |
 | P09 | Deux activités et vérification avant activation ; réactivation, droits de bascule et activité métier initiale ouverts | Activation conditionnelle sans réactiver implicitement Client | Statuts / historique et préconditions / affichage des deux états | AC12/AC13/AC25 |
 | P10 | Cinq destinations et mémoire validées ; aucun frontend trouvé | Lot Angular distinct après contrats ; pas de refresh token inventé | Login/me conservés / aucun changement SQL imposé / session et écrans partagés | AC28/AC30, responsive et accessibilité |
 | P11 | E-mails nécessaires ; prestataire, expéditeur, renvoi et reprise d'échec non définis | Livraison après commit avec reprise fiable à concevoir ; aucun secret ou jeton complet journalisé | Envoi / livraison persistante si retenue / confirmation et renvoi selon politique | AC10/AC16/AC27, reprise sans doublon |
+| P12 | Consultation paginée et détail proposés ; recherche, tri, tailles/défauts de pagination et politique 403/404 non fixés par le cahier | À valider avant développement : paramètres et filtres exacts, bornes, tri stable et occultation uniforme 404 pour absent ou invisible ; 403 pour interdiction d'opération indépendante de l'existence de la cible | Même périmètre dans contenu, count et détail / aucune migration nécessaire à ce contrat / interface sans valeurs implicites | AC-CONS01–AC-CONS08 ; attentes HTTP conditionnelles |
 
 ## 6. PostgreSQL, migration et risques
 
@@ -289,6 +292,10 @@ Contribution documentaire ne signifie pas validation technique complète des acq
 
 ## 9. Étapes futures et stratégie Git
 
+### Plan initial — historique de l'issue #7
+
+Le plan et les instantanés suivants décrivent la préparation initiale ; les lots 1 et 2 ont depuis livré générateur, historique et authentification DEC-COMPTES-003. La situation du lot 3A figure à la fin de cette section.
+
 1. Valider le dossier et préciser les questions bloquantes du prochain lot.
 2. Concevoir création atomique, invitations et numérotation ; nouvelles migrations seulement après P01/P02/P06.
 3. Réaliser les API administratives et le périmètre avant pagination après P05/P07/P09.
@@ -302,7 +309,7 @@ Chaque futur lot aura issue et branche après validation ; aucune issue de déve
 
 Lors de la création du worktree documentaire, le dossier original était sur chore/issue-5-configuration-swagger, HEAD 5e4d049, avec README.md et application-dev.properties modifiés et deux scripts IntelliJ non suivis. Le fetch effectué à cette étape a actualisé origin/master à 8a2a474 ; master local est resté à 140597c, deux commits derrière. Ce relevé historique ne décrit pas toutes les modifications locales intervenues ensuite.
 
-### État actuel — correction documentaire de l'issue #7
+### Instantané historique — correction documentaire de l'issue #7
 
 | Répertoire | Branche / HEAD | Modifications locales conservées |
 |---|---|---|
@@ -314,3 +321,15 @@ Le registre privé principal comptes-demo.local.md reste dans le dossier origina
 Cet état est un instantané avant commit : aucun fichier indexé, aucun commit, push, merge ou PR dans cette correction. Aucun stash, reset, clean, transfert de correction locale ou changement de branche n'est effectué. Java, Angular, V1/V2, PostgreSQL et les comptes restent inchangés.
 
 La branche documentaire suit encore origin/master, base locale 8a2a474. Une publication ultérieure, uniquement après accord, devra cibler sa propre branche distante. Le futur commit devra inclure seulement les cinq documents et le .gitignore documentaire ; les modifications du dossier original et les registres privés restent hors publication.
+
+### Lot 3A — situation et suite
+
+Base dédiée : origin/master 39a7b6b ; branche docs/lot-3a-consultation-comptes dans covoiturage-docs-lot-3a-consultation-comptes. Les quatre worktrees préexistants et leurs modifications locales restent hors périmètre. Les états historiques ci-dessus ne décrivent pas cette nouvelle branche. L'issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13) porte uniquement la correction et la préparation documentaires.
+
+Droits de lecture confirmés : GLOBAL consulte les comptes du réseau ; LOCAL consulte seulement les comptes CLIENT liés à sa zone. Les comptes sans zone sont exclus de la lecture LOCAL. La visibilité des comptes ADMIN pour LOCAL demeure P07, sans permission accordée en attendant ; son propre profil reste accessible via me.
+
+Correction de cohérence, sans nouvelle décision métier : le login CLIENT est le matricule généré (DEC-COMPTES-003, V3/V4), jamais un champ public libre. Dans le DTO administratif proposé, identifiant contient l'e-mail de connexion pour une ligne ADMIN autorisée au GLOBAL ; cette donnée ne peut être supprimée au titre d'une interdiction générale des e-mails. L'e-mail de contact CLIENT ne fait pas partie du DTO commun proposé ; une éventuelle exposition ultérieure nécessite finalité et permission explicites.
+
+Prochain lot recommandé : consultation seule, après validation de P12 et des combinaisons de filtres. Réutiliser AdminAuthorization et CompteRepository ; un seul service de gestion des comptes, transactions de lecture, DTO/mapper explicites et GlobalExceptionHandler étendu aux erreurs nécessaires. Aucun second AuthService ni générateur. Invitations, créations, transitions et statuts restent des lots distincts soumis à P03–P11. Aucune migration nécessaire pour ce dossier ; tout éventuel index futur sera justifié par les requêtes retenues et ajouté par migration, sans toucher V1–V4.
+
+Traçabilité du lot 3A : RM01–RM04 (identité/permissions), RM09–RM13 (matricule et états conservés), RM49/RM51/RM57 (périmètres et comptages), RM58–RM60 (intégrité et données sensibles). Les autres RM restent classées en section 7, sans changement. Contribution directe AA1/AA2/AA11 ; préparation AA3–AA7/AA9/AA10 ; AA8 reste un lot Angular distinct. La documentation ne vaut pas validation applicative de ces acquis.

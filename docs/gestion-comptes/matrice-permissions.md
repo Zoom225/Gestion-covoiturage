@@ -11,6 +11,8 @@ Issue [#7](https://github.com/Zoom225/Gestion-covoiturage/issues/7), 21 octobre 
 
 Cette matrice spécifie la cible validée ; elle ne signifie pas que les API administratives existent. Les seules API d'authentification livrées sont login et me.
 
+**Actualisation documentaire — lot 3A / issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13), 24 octobre 2026 :** base origin/master 39a7b6b (PR #10 et #12 fusionnées). Aucun endpoint administratif livré par ce lot. Le matricule CLIENT est le login généré ; l'e-mail de connexion ADMIN est distinct du contact CLIENT. Les droits de lecture confirmés et les modalités encore ouvertes sont séparés dans les [contrats de consultation](contrats-api.md#5-consultation-administrative--proposée).
+
 ## 1. Légende et conditions
 
 - **AUTORISÉ** : droit confirmé par l'énoncé, le cahier ou DEC-COMPTES-001/A1–A9, sous les conditions de la ligne.
@@ -73,7 +75,18 @@ Une ligne AUTORISÉ n'annule pas les préconditions ouvertes : aucun parcours d�
 4. Intersecter périmètre et filtres dans la requête avant pagination ; appliquer la même restriction au total et aux compteurs.
 5. Contrôler les détails et modifications avec la même politique ; contrôler source et cible d'une mutation de zone.
 6. Pour LOCAL, exclure les clients sans zone et les types de comptes dont la visibilité n'est pas validée. Pour GLOBAL, autoriser les ressources sans zone uniquement dans les opérations validées.
-7. Dans la cible proposée, un accès direct hors zone reçoit 403 sans données de la ressource. Une ressource inexistante dans un périmètre autorisé reçoit 404 ; la politique d'occultation éventuelle reste à préciser.
+7. Distinguer le refus d'une opération (403, indépendamment de l'existence d'une cible) de l'absence de résultat dans le périmètre. L'ancienne proposition 403 pour une cible hors zone et 404 pour une cible absente peut révéler son existence. Recommandation P12 à valider : même 404 et même message générique pour absent ou invisible, avec recherche déjà filtrée et sans requête d'existence globale de secours. Cette recommandation ne constitue ni une permission nouvelle ni un comportement livré.
+
+### Lecture administrative — portée confirmée
+
+| Acteur | Lignes consultables dans la cible | Limites |
+|---|---|---|
+| Visiteur | Aucune | 401 sur API protégée |
+| CLIENT, toute catégorie | Aucune via API administrative | 403 avec authentification valide ; me reste disponible pour soi |
+| ADMIN LOCAL | Comptes CLIENT dont Client.zone.id correspond à sa zone administrative persistée | Sans-zone et hors-zone exclus des lignes, totaux et détails ; aucune visibilité des comptes ADMIN accordée avant P07 |
+| ADMIN GLOBAL | Comptes CLIENT et ADMIN du réseau | Inclut les comptes sans zone ; cette lecture n'autorise aucune mutation non spécifiée |
+
+Les statuts des comptes consultés sont des données de lecture A8 ; ils ne donnent pas de droit de modification. L'acteur doit lui-même disposer d'un accès effectif valide. Dans le DTO proposé, l'identifiant d'une ligne ADMIN est son e-mail de connexion ; l'e-mail de contact CLIENT est exclu du DTO commun. Les règles exactes de recherche, tri, pagination et réponses de détail restent P02/P12 ; voir la source contractuelle unique en [section 5](contrats-api.md#5-consultation-administrative--proposée).
 
 ## 4. Invariants indépendants de l'interface
 
