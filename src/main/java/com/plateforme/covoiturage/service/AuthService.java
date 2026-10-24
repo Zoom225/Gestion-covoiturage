@@ -35,7 +35,7 @@ public class AuthService {
         }
         var compte = comptes.findByIdentifiantIgnoringCase(request.identifiant()).orElse(null);
         boolean matches = passwords.matches(request.password(), compte == null ? dummyHash : compte.getPasswordHash());
-        if (!matches || compte == null || !isActive(compte)) {
+        if (!matches || compte == null || !compte.isAccesEffectif()) {
             throw invalidCredentials();
         }
         return tokens.issue(compte.getId());
@@ -48,7 +48,7 @@ public class AuthService {
         } catch (NumberFormatException ex) {
             throw invalidCredentials();
         }
-        var compte = comptes.findById(id).filter(this::isActive).orElseThrow(AuthService::invalidCredentials);
+        var compte = comptes.findById(id).filter(Compte::isAccesEffectif).orElseThrow(AuthService::invalidCredentials);
         var client = compte.getClient();
         return new ComptePrincipal(new ProfileResponse(compte.getId(), compte.getIdentifiant(), compte.getRole(),
                 client == null ? null : client.getId(), client == null ? null : client.getCategorie(),
@@ -58,10 +58,6 @@ public class AuthService {
 
     public ProfileResponse me(ComptePrincipal principal) {
         return principal.profile();
-    }
-
-    private boolean isActive(Compte compte) {
-        return compte.isActif() && (compte.getClient() == null || compte.getClient().isActif());
     }
 
     private static BadCredentialsException invalidCredentials() {

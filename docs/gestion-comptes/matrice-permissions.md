@@ -1,5 +1,7 @@
 # Matrice des permissions — gestion des comptes
 
+**État courant — lot 3B / issue [#15](https://github.com/Zoom225/Gestion-covoiturage/issues/15) :** consultation administrative implémentée selon les règles validées le 24 octobre 2026. GLOBAL consulte le réseau ; LOCAL seulement les comptes CLIENT de sa zone, sans visibilité des comptes ADMIN. Pagination 0/20/100, ordre compteId croissant, recherche exacte sans casse, filtres par intersection et même 404 pour absent/invisible. Les propositions du lot 3A ci-dessous sont historiques lorsqu'elles sont remplacées par cet état. Voir [architecture, contrat et preuves TFE](lot-3b-consultation.md).
+
 **État courant — lot 2 / #11 :** POST login accepte l'e-mail ADMIN ou le matricule CLIENT sans distinction de casse ; GET me conserve les droits issus de PostgreSQL. V4 impose stockage canonique et cohérence Client/Compte sans réécrire les anciens comptes. Les formulations antérieures décrivent l'historique. Voir [contrat livré et tests AC-AUTH](lot-2-authentification.md).
 
 
@@ -9,9 +11,9 @@
 [Décisions et références](decisions.md) · [Contrats proposés](contrats-api.md) · [Tests](tests-acceptation.md).
 Issue [#7](https://github.com/Zoom225/Gestion-covoiturage/issues/7), 21 octobre 2026.
 
-Cette matrice spécifie la cible validée ; elle ne signifie pas que les API administratives existent. Les seules API d'authentification livrées sont login et me.
+Cette matrice distingue droits validés et parcours futurs. Login/me et les deux GET administratifs de consultation sont livrés au lot 3B ; aucune création ou mutation administrative ne l'est.
 
-**Actualisation documentaire — lot 3A / issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13), 24 octobre 2026 :** base origin/master 39a7b6b (PR #10 et #12 fusionnées). Aucun endpoint administratif livré par ce lot. Le matricule CLIENT est le login généré ; l'e-mail de connexion ADMIN est distinct du contact CLIENT. Les droits de lecture confirmés et les modalités encore ouvertes sont séparés dans les [contrats de consultation](contrats-api.md#5-consultation-administrative--proposée).
+**Actualisation documentaire — lot 3A / issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13), 24 octobre 2026 :** base origin/master 39a7b6b (PR #10 et #12 fusionnées). Aucun endpoint administratif livré par ce lot. Le matricule CLIENT est le login généré ; l'e-mail de connexion ADMIN est distinct du contact CLIENT. Les droits de lecture confirmés et les modalités encore ouvertes sont séparés dans les [contrats de consultation](contrats-api.md#5-consultation-administrative--implémentée-lot-3b).
 
 ## 1. Légende et conditions
 
@@ -33,7 +35,7 @@ Cette matrice spécifie la cible validée ; elle ne signifie pas que les API adm
 | Connexion avec ses identifiants actifs | AUTORISÉ | AUTORISÉ | AUTORISÉ | AUTORISÉ | AUTORISÉ | AUTORISÉ | RM01/RM13 ; visiteur devient authentifié |
 | Consulter son profil via me | INTERDIT | AUTORISÉ | AUTORISÉ | AUTORISÉ | AUTORISÉ | AUTORISÉ | RM03 ; identité imposée par JWT puis base |
 | Consulter les comptes clients administrés | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ : ZONE | AUTORISÉ : réseau | RM49/RM51/A6 ; filtres et totaux dans le périmètre |
-| Consulter les comptes d'autres administrateurs dans le tableau | INTERDIT | INTERDIT | INTERDIT | INTERDIT | À PRÉCISER | AUTORISÉ | P07 ; ne pas exposer ces lignes au LOCAL avant précision |
+| Consulter les comptes administrateurs via liste ou détail administratifs | INTERDIT | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ | Lot 3B validé ; inclut l'exclusion de son propre compte ADMIN pour LOCAL, profil personnel via me |
 | Consulter un compte hors de sa zone administrative | INTERDIT | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ : réseau | A6 ; profil personnel reste disponible via me |
 | Gestion administrative d'un VIP/OCCASIONNEL sans zone | INTERDIT | INTERDIT | INTERDIT | INTERDIT | INTERDIT | AUTORISÉ pour opérations validées | A6 ; ne définit pas les opérations encore ouvertes |
 | Création administrative d'un client OCCASIONNEL | INTERDIT | INTERDIT | INTERDIT | INTERDIT | À PRÉCISER pour client zoné ; INTERDIT sans zone | AUTORISÉ | BF02/RM49/RM51/A6 ; P03/P07 pour rattachement |
@@ -74,8 +76,8 @@ Une ligne AUTORISÉ n'annule pas les préconditions ouvertes : aucun parcours d�
 3. Déterminer la zone réelle à partir des données persistées, pas du filtre ou du corps HTTP.
 4. Intersecter périmètre et filtres dans la requête avant pagination ; appliquer la même restriction au total et aux compteurs.
 5. Contrôler les détails et modifications avec la même politique ; contrôler source et cible d'une mutation de zone.
-6. Pour LOCAL, exclure les clients sans zone et les types de comptes dont la visibilité n'est pas validée. Pour GLOBAL, autoriser les ressources sans zone uniquement dans les opérations validées.
-7. Distinguer le refus d'une opération (403, indépendamment de l'existence d'une cible) de l'absence de résultat dans le périmètre. L'ancienne proposition 403 pour une cible hors zone et 404 pour une cible absente peut révéler son existence. Recommandation P12 à valider : même 404 et même message générique pour absent ou invisible, avec recherche déjà filtrée et sans requête d'existence globale de secours. Cette recommandation ne constitue ni une permission nouvelle ni un comportement livré.
+6. Pour la consultation du lot 3B, LOCAL exclut les clients sans zone et tous les comptes ADMIN ; GLOBAL inclut les sans-zone. Les autres opérations restent soumises à leurs droits propres.
+7. Lot 3B validé : 403 pour l'acteur authentifié sans permission administrative, indépendamment de la cible. Même 404 NOT_FOUND / Ressource introuvable pour absent ou invisible ; recherche déjà filtrée, sans vérification globale d'existence. 401 si authentification indisponible. Les anciennes propositions 403 hors zone sont remplacées pour ces GET.
 
 ### Lecture administrative — portée confirmée
 
@@ -83,10 +85,10 @@ Une ligne AUTORISÉ n'annule pas les préconditions ouvertes : aucun parcours d�
 |---|---|---|
 | Visiteur | Aucune | 401 sur API protégée |
 | CLIENT, toute catégorie | Aucune via API administrative | 403 avec authentification valide ; me reste disponible pour soi |
-| ADMIN LOCAL | Comptes CLIENT dont Client.zone.id correspond à sa zone administrative persistée | Sans-zone et hors-zone exclus des lignes, totaux et détails ; aucune visibilité des comptes ADMIN accordée avant P07 |
+| ADMIN LOCAL | Comptes CLIENT dont Client.zone.id correspond à sa zone administrative persistée | Sans-zone et hors-zone exclus des lignes, totaux et détails ; comptes ADMIN exclus de la lecture administrative, même de sa propre zone |
 | ADMIN GLOBAL | Comptes CLIENT et ADMIN du réseau | Inclut les comptes sans zone ; cette lecture n'autorise aucune mutation non spécifiée |
 
-Les statuts des comptes consultés sont des données de lecture A8 ; ils ne donnent pas de droit de modification. L'acteur doit lui-même disposer d'un accès effectif valide. Dans le DTO proposé, l'identifiant d'une ligne ADMIN est son e-mail de connexion ; l'e-mail de contact CLIENT est exclu du DTO commun. Les règles exactes de recherche, tri, pagination et réponses de détail restent P02/P12 ; voir la source contractuelle unique en [section 5](contrats-api.md#5-consultation-administrative--proposée).
+Les statuts des comptes consultés sont des données de lecture A8 ; ils ne donnent pas de droit de modification. L'acteur doit lui-même disposer d'un accès effectif valide. Dans le DTO proposé, l'identifiant d'une ligne ADMIN est son e-mail de connexion ; l'e-mail de contact CLIENT est exclu du DTO commun. Les règles exactes de recherche, tri, pagination et réponses de détail ont été validées pour le lot 3B ; voir la source contractuelle unique en [section 5](contrats-api.md#5-consultation-administrative--implémentée-lot-3b).
 
 ## 4. Invariants indépendants de l'interface
 
