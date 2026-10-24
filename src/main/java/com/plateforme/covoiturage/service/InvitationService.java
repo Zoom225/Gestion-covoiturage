@@ -1,0 +1,134 @@
+package com.plateforme.covoiturage.service;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.plateforme.covoiturage.entity.Compte;
+import com.plateforme.covoiturage.entity.Invitation;
+import com.plateforme.covoiturage.enums.EtatIdentifiants;
+import com.plateforme.covoiturage.exception.InvitationConflictException;
+import com.plateforme.covoiturage.exception.InvitationInvalideException;
+import com.plateforme.covoiturage.exception.ResourceNotFoundException;
+import com.plateforme.covoiturage.repository.CompteRepository;
+import com.plateforme.covoiturage.repository.InvitationRepository;
+import com.plateforme.covoiturage.security.InvitationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Base64;
+import java.util.HexFormat;
+
+@Service
+@Transactional
+@EnableConfigurationProperties(InvitationProperties.class)
+public class InvitationService {
+    private final CompteRepository comptes;
+    private final InvitationRepository invitations;
+    private final InvitationProperties properties;
+    private final Clock clock;
+    private final SecureRandom random = new SecureRandom();
+
+    public InvitationService(CompteRepository comptes, InvitationRepository invitations,
+                             InvitationProperties properties, Clock clock) {
+        this.comptes = comptes;
+        this.invitations = invitations;
+        this.properties = properties;
+        this.clock = clock;
+    }
+
+    /** Résultat strictement interne, jamais un DTO REST ou administratif. */
+    public record InvitationEmise(@JsonIgnore String jeton, Instant expireA) {
+        @Override public String toString() {
+            return "InvitationEmise[jeton=REDACTED]";
+        }
+    }
+
+    public InvitationEmise emettre(Long compteId) {
+        return preparer(compteId, false);
+    }
+
+    public InvitationEmise renouveler(Long compteId) {
+        return preparer(compteId, true);
+    }
+
+    public void revoquer(Long compteId) {
+        comptes.verrouillerEtatPourInvitation(compteId).orElseThrow(ResourceNotFoundException::new);
+        invitations.revoquerOuvertes(compteId, maintenant());
+    }
+
+    /**
+     * Consomme uniquement la preuve. Le futur parcours devra initialiser le mot de passe
+     * dans la même transaction englobante ; aucun endpoint d'acceptation n'existe ici.
+     */
+    public Long consommer(String jeton) {
+        String empreinte = empreinte(jeton);
+        Long compteId = invitations.findCompteIdByEmpreinte(empreinte)
+                .orElseThrow(InvitationInvalideException::new);
+        String etat = comptes.verrouillerEtatPourInvitation(compteId)
+                .orElseThrow(InvitationInvalideException::new);
+        if (!EtatIdentifiants.INVITE.name().equals(etat)
+                || invitations.consommerSiValide(empreinte, maintenant()) != 1) {
+            throw new InvitationInvalideException();
+        }
+        return compteId;
+    }
+
+    private InvitationEmise preparer(Long compteId, boolean renouvellement) {
+        // Hors dev, aucune durée implicite : l'exploitation doit configurer INVITATION_TTL.
+        if (properties.ttl() == null) {
+            throw new IllegalStateException("Invitation TTL must be configured before issuing invitations");
+        }
+        String etat = comptes.verrouillerEtatPourInvitation(compteId).orElseThrow(ResourceNotFoundException::new);
+        if (!EtatIdentifiants.INVITE.name().equals(etat)) {
+            throw new InvitationConflictException();
+        }
+        Instant maintenant = maintenant();
+        Instant expiration = maintenant.plus(properties.ttl()).truncatedTo(ChronoUnit.MICROS);
+        if (!expiration.isAfter(maintenant)) {
+            throw new IllegalStateException("Invitation TTL must exceed PostgreSQL timestamp precision");
+        }
+        if (renouvellement) {
+            // UPDATE exécuté avant l'INSERT : l'index partiel est libéré dans la même transaction.
+            invitations.revoquerOuvertes(compteId, maintenant);
+        } else if (invitations.existsByCompteIdAndConsommeeAIsNullAndRevoqueeAIsNull(compteId)) {
+            throw new InvitationConflictException();
+        }
+        Compte compte = comptes.getReferenceById(compteId);
+        byte[] octets = new byte[32];
+        random.nextBytes(octets);
+        String jeton = Base64.getUrlEncoder().withoutPadding().encodeToString(octets);
+        invitations.saveAndFlush(new Invitation(compte, sha256(octets), maintenant, expiration));
+        return new InvitationEmise(jeton, expiration);
+    }
+
+    private Instant maintenant() {
+        return clock.instant().truncatedTo(ChronoUnit.MICROS);
+    }
+
+    private String empreinte(String jeton) {
+        if (jeton == null || !jeton.matches("[A-Za-z0-9_-]{43}")) throw new InvitationInvalideException();
+        byte[] octets;
+        try {
+            octets = Base64.getUrlDecoder().decode(jeton);
+        } catch (IllegalArgumentException ex) {
+            throw new InvitationInvalideException();
+        }
+        if (octets.length != 32 || !Base64.getUrlEncoder().withoutPadding().encodeToString(octets).equals(jeton)) {
+            throw new InvitationInvalideException();
+        }
+        return sha256(octets);
+    }
+
+    private String sha256(byte[] octets) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(octets));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 unavailable");
+        }
+    }
+}

@@ -1,5 +1,8 @@
 # Tests d'acceptation — comptes centralisés
 
+**Actualisation — lot 3C.2 / issue [#21](https://github.com/Zoom225/Gestion-covoiturage/issues/21) :** DEC-COMPTES-005 livre le service interne de preuves d'invitation (32 octets, SHA-256, durée configurable, révocation/renouvellement et consommation atomique). Aucun endpoint, e-mail, mot de passe ou compte créé. Voir [modèle, concurrence, tests et limites AA](lot-3c2-invitations.md).
+
+
 **Actualisation — lot 3C.1 / issue [#19](https://github.com/Zoom225/Gestion-covoiturage/issues/19) :** DEC-COMPTES-004 ajoute INVITE/INITIALISE. Compte invité sans hash, accès refusé y compris par JWT ; INITIALISE et activités sont indépendants. Les comptes préexistants restent INITIALISES. Seul le socle est livré ; jetons, e-mails et création administrative restent futurs. Voir [modèle, migration V5 et preuves](lot-3c1-comptes-invites.md).
 
 
@@ -178,3 +181,23 @@ e-mails, invitation expirée/utilisée, politique minimale et anti-abus attenden
 Résultat local final du lot 3C.1 (24 octobre 2026) : mvnw.cmd clean verify, **121 tests réussis,
 0 échec, 0 erreur, 0 ignoré**, dont 26 tests du nouveau socle et les 95 antérieurs.
 Aucune validation du parcours d'invitation complet n'en est déduite.
+
+## Lot 3C.2 — preuves d'invitation internes
+
+Ces regroupements AC-INV ne sont pas des comptes de tests exécutés. Aucun endpoint d'acceptation
+ni workflow complet d'invitation n'est annoncé livré par ces scénarios.
+
+| Référence | Given / When | Then | Preuve |
+|---|---|---|---|
+| AC-INV01 | Compte INVITE, émission/renouvellement répétés | Jetons distincts de 32 octets ; SHA-256 seul en base ; transport interne expurgé | cryptographicTokensAre32BytesDistinctAndOnlyDigestsArePersisted |
+| AC-INV02 | Clock contrôlée avant/à/après expiration | Fenêtre exacte, durée configurable ; aucune suppression de compte/matricule | developmentTtlIs24HoursAndTokenWorksImmediatelyBeforeExpiry ; exactExpiryAndLaterAreRejectedWithoutDeletingAccountOrNumber |
+| AC-INV03 | Jeton révoqué, remplacé, inconnu, mal formé, non canonique ou utilisé | Même refus générique, aucune réactivation | revocationIsIdempotentAndDoesNotReactivateAnything ; renewalRevokesPreviousProofAndKeepsHistoryAndAccount ; invalidUnknownOrNoncanonicalTokensHaveTheSameSafeFailure ; consumedTokenIsNeverUsableAgain |
+| AC-INV04 | Deux connexions PostgreSQL, départ synchronisé | Une consommation ; une émission ouverte ; renouvellement/consommation sérialisés | twoConcurrentPostgresTransactionsConsumeExactlyOnce ; twoConcurrentIssuancesHaveExactlyOneOpenInvitation ; renewalAndConsumptionShareTheSameAccountLock |
+| AC-INV05 | Contexte JPA préchargé avant un autre commit | Impossible de réutiliser un ancien état pour consommer ou émettre | preloadedJpaInvitationCannotBeConsumedTwiceAfterAnotherCommit ; preloadedJpaAccountCannotBypassTheCurrentInitializedState |
+| AC-INV06 | Émission, consommation ou renouvellement suivi d'échec dans une transaction englobante | Rollback ; preuve précédente valide et aucune preuve fantôme | issuanceRollbackDoesNotLeaveAProofOrLoseTheAccount ; consumptionRollbackAllowsARetryInTheFutureAcceptanceTransaction ; renewalRollbackKeepsTheOldProofAndRejectsTheRolledBackNewOne |
+| AC-INV07 | Migration V5→V6 et écritures incohérentes | Conservation des comptes/références ; FK, UNIQUE, dates et états terminaux garantis | v5ToV6PreservesExistingInitializedAndInvitedAccountsAndNumberHistory ; postgresEnforcesV6Constraints ; invitationForeignKeyDoesNotCascadeDeleteAnAccount |
+| AC-INV08 | INITIALISE, durée absente/invalide, API/OpenAPI et erreurs | Pas d'émission incompatible, de jeton brut exposé ou de nouvelle route ; 400/409 contrôlés préparés | initializedAccountCannotReceiveOrConsumeInvitations ; missingDurationOutsideDevFailsClosedBeforeAnyEmission ; zeroAndNegativeConfiguredDurationsAreRejected ; noInvitationEndpointOrRawTokenSchemaIsExposed ; InvitationExceptionHandlerTests |
+
+Les 121 tests antérieurs sont conservés. Résultats réellement exécutés et contributions AA partielles
+dans le [dossier du lot 3C.2](lot-3c2-invitations.md). SMTP, politique de mot de passe, vérification
+d'e-mail et acceptation utilisateur restent des lots futurs.

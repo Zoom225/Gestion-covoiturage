@@ -410,3 +410,11 @@ Login et JWT refusent INVITE. Le DTO administratif expose seulement l'état non 
 Aucun jeton d'invitation, envoi d'e-mail, endpoint de création ou compte fictif n'est ajouté.
 Les preuves PostgreSQL/HTTP et limites AA figurent dans le dossier du lot.
 V5 est testée dans Testcontainers ; la base de développement n'est pas migrée pendant cette livraison.
+## Lot 3C.2 — jetons d'invitation internes
+
+Le [dossier du lot 3C.2](docs/gestion-comptes/lot-3c2-invitations.md), issue #21, décrit
+V6 et InvitationService : SecureRandom 32 octets, SHA-256 seul en base, expiration configurable,
+révocation, renouvellement et consommation atomique PostgreSQL. Aucun endpoint, SMTP ou création de compte.
+INVITATION_TTL propose PT24H sous dev seul ; hors dev, la durée doit être fournie avant émission.
+Le futur parcours devra consommer la preuve et établir BCrypt dans la même transaction.
+Aucune V6 appliquée à la base locale partagée ; les tests utilisent Testcontainers.
