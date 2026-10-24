@@ -379,3 +379,7 @@ La migration additive V3 et le générateur transactionnel V/C/O sont décrits d
 ## Lot 2 — connexion e-mail administrateur et matricule client
 
 La [connexion DEC-COMPTES-003](docs/gestion-comptes/lot-2-authentification.md), issue #11, conserve login/me, BCrypt et JWT. V4 garantit l'unicité sans casse et la cohérence du matricule, sans convertir les anciens comptes. Les passages précédents décrivent les lots antérieurs. Aucun compte de démonstration ni migration de la base locale dans cette validation.
+
+## Lot 3B — consultation administrative des comptes
+
+Les deux GET /api/admin/comptes et /api/admin/comptes/{id} sont décrits dans les [contrats courants](docs/gestion-comptes/contrats-api.md#5-consultation-administrative--implémentée-lot-3b), avec GLOBAL réseau, LOCAL limité aux CLIENT de sa zone, filtres avant pagination/count et 404 uniforme absent/invisible. Les sections des lots précédents restent historiques. Le [dossier TFE du lot 3B](docs/gestion-comptes/lot-3b-consultation.md) précise architecture, modèle conservé, sécurité, tests et couverture partielle AA1–AA11. Aucune création de compte, invitation, mutation ou migration nouvelle.

@@ -41,6 +41,11 @@ public class Compte {
     @JoinColumn(name = "zone_admin_id")
     private Zone zoneAdmin;
 
+    /** État d'accès commun à l'authentification et à la consultation administrative. */
+    public boolean isAccesEffectif() {
+        return actif && (client == null || client.isActif());
+    }
+
     public Compte(String identifiant, String passwordHash, boolean actif, RoleTechnique role,
                   Client client, PerimetreAdmin perimetreAdmin, Zone zoneAdmin) {
         this.identifiant = identifiant;
