@@ -73,4 +73,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(409).body(ApiErrorResponse.of(409, "INVITATION_CONFLICT",
                 "Opération d'invitation incompatible avec l'état courant", request.getRequestURI()));
     }
+
+    @ExceptionHandler(InvalidAccountRequestException.class)
+    ResponseEntity<ApiErrorResponse> invalidAccount(HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(400, "INVALID_REQUEST",
+                "Données de compte invalides", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(DeliveryUnavailableException.class)
+    ResponseEntity<ApiErrorResponse> deliveryUnavailable(HttpServletRequest request) {
+        return ResponseEntity.status(503).body(ApiErrorResponse.of(503, "DELIVERY_UNAVAILABLE",
+                "Livraison d'invitation indisponible", request.getRequestURI()));
+    }
 }

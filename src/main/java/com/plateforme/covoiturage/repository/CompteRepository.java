@@ -31,4 +31,19 @@ public interface CompteRepository extends JpaRepository<Compte, Long>, JpaSpecif
     @Override
     @EntityGraph(attributePaths = {"client", "client.zone", "zoneAdmin"})
     Optional<Compte> findOne(Specification<Compte> specification);
+
+    @Query(value = "select actif from compte where id=?1 for update", nativeQuery = true)
+    Optional<Boolean> activiteCompteVerrouillee(Long id);
+
+    @Query(value = "select cl.actif from client cl join compte c on c.client_id=cl.id"
+            + " where c.id=?1 for update of cl", nativeQuery = true)
+    Optional<Boolean> activiteClientVerrouillee(Long id);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = """
+            update compte c set password_hash=?2,etat_identifiants='INITIALISE'
+            where c.id=?1 and c.etat_identifiants='INVITE' and c.actif
+              and (c.client_id is null or exists(select 1 from client cl where cl.id=c.client_id and cl.actif))
+            """, nativeQuery = true)
+    int initialiserSiActif(Long id, String passwordHash);
 }
