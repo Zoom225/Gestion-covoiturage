@@ -11,6 +11,8 @@ Issue [#7](https://github.com/Zoom225/Gestion-covoiturage/issues/7), base 8a2a47
 
 **Seuls POST /api/auth/login et GET /api/auth/me sont existants. Toutes les autres opérations de ce document sont proposées, non implémentées.** Les DTO nouveaux sont conceptuels : aucun fichier Java ou Angular créé.
 
+**Actualisation documentaire — lot 3A / issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13), 24 octobre 2026 :** base origin/master 39a7b6b (PR #10 et #12 fusionnées). Aucun endpoint administratif livré par ce lot. Le matricule CLIENT est le login généré ; l'e-mail de connexion ADMIN est distinct du contact CLIENT. Les droits de lecture confirmés et les modalités encore ouvertes sont séparés dans les [contrats de consultation](contrats-api.md#5-consultation-administrative--proposée).
+
 ## 1. Responsabilités et conventions
 
 Controller : HTTP, Bean Validation, DTO, délégation. Service : droits, périmètre, transactions, cycle de vie et audit. Repository : requêtes et verrouillage PostgreSQL. Mapper explicite des seuls champs autorisés ; aucune désérialisation d'entité JPA.
@@ -30,7 +32,7 @@ Les créations spécialisées Client et Administrateur évitent un POST généri
 | POST /api/admin/administrateurs | PROPOSÉ | ADMIN GLOBAL seulement | 201, invitation en attente |
 | PATCH /api/admin/comptes/{id}/statut | PROPOSÉ | ADMIN autorisé, droits fins P09 | 200, DTO actualisé |
 
-Les succès 201 et les enveloppes ci-dessous sont des propositions de contrat à valider. Ne pas activer les endpoints dont les préconditions P01–P11 ne sont pas précisées. Aucun privilège ne se déduit du seul fait que le chemin commence par /api/admin.
+Les succès 201 et les enveloppes ci-dessous sont des propositions de contrat à valider. Ne pas activer un endpoint tant que ses préconditions applicables P01–P12 ne sont pas précisées ; la lecture seule ne dépend pas des parcours de création/invitation hors périmètre. Aucun privilège ne se déduit du seul fait que le chemin commence par /api/admin.
 
 Périmètre d'activation : vérification d'e-mail avant activation pour les nouveaux inscrits publics OCCASIONNEL ; invitation sécurisée avant accès pour les nouveaux comptes créés administrativement par le parcours normal. Une éventuelle vérification d'e-mail distincte de l'invitation reste P06/P11. Les comptes préexistants conservent les contrôles actuels de login/me ; aucune obligation rétroactive d'e-mail ou d'invitation n'est ajoutée sans décision et migration adaptées. Le futur jeu fictif isolé reste l'exception DEC-COMPTES-002, sans nouvel endpoint.
 
@@ -99,37 +101,85 @@ Frontend cible : formulaire commun → login → jeton en mémoire → me → va
 
 ## 5. Consultation administrative — PROPOSÉE
 
-### GET /api/admin/comptes
+**Lot 3A / #13 : contrat à valider avant développement.** Les deux GET suivants n'existent pas encore. Ce contrat de lecture n'active ni création, invitation, changement de catégorie/zone, ni modification de statut.
 
-Paramètres conceptuels :
+### 5.1 Droits et périmètre confirmés
 
-| Paramètre | Proposition |
+- GLOBAL : consultation des comptes CLIENT et ADMIN sur le réseau, y compris les clients VIP/OCCASIONNEL sans zone.
+- LOCAL : consultation des seuls comptes CLIENT rattachés à sa zone administrative lue en PostgreSQL, quelle que soit leur catégorie. Un client sans zone ou d'une autre zone est exclu.
+- La visibilité des comptes ADMIN pour LOCAL reste P07, même s'ils ont la même zone. Aucun accès à ces lignes n'est accordé par la présente proposition. Le profil propre reste accessible via GET me.
+- Visiteur : authentification requise. CLIENT authentifié : aucun accès administratif, quelle que soit sa catégorie. Le rôle ADMIN seul ne suffit pas à déterminer toutes les lignes visibles.
+- Les statuts des comptes consultés sont des données de lecture A8, sans droit de mutation. L'acteur, lui, reste soumis aux contrôles d'activité existants. Les éventuels filtres de statut ne doivent pas être confondus avec ces contrôles.
+
+### 5.2 GET /api/admin/comptes
+
+Paramètres conceptuels réservés ; **la liste ci-dessous ne fixe aucune règle de recherche, de tri ou de taille de page** :
+
+| Paramètre envisagé | Déjà fixé / choix restant ouvert |
 |---|---|
-| page, size | Pagination indexée à partir de zéro ; valeurs positives/cohérentes, taille maximale à préciser avant implémentation |
-| identifiant | Recherche sans distinction de casse selon A2 ; mode exact/préfixe/partiel P02 |
-| role | ADMIN ou CLIENT, enum validé |
-| categorie | VIP, LOCAL, OCCASIONNEL ; champ CLIENT |
-| zoneId | Filtre sur la zone pertinente selon le type de compte, sans élargir le périmètre |
-| compteActif, clientActif | Booléens distincts ; clientActif inapplicable aux comptes ADMIN |
-| sort | Liste blanche de champs, tri stable incluant id ; champs autorisés à fixer |
+| page, size | Pagination serveur ; index de départ, valeurs par défaut, bornes et comportement de dépassement À PRÉCISER P12. L'indexation à zéro de la version antérieure était une proposition, pas une règle validée |
+| identifiant | Login ADMIN e-mail ou CLIENT matricule ; comparaison sans casse déjà livrée pour le login. Sa réutilisation pour une recherche administrative, le mode exact/préfixe/partiel et les jokers restent P02/P12 |
+| role | ADMIN ou CLIENT selon enum ; ne donne aucun droit. Traitement d'un filtre ADMIN présenté par LOCAL à préciser ; aucune ligne ni compteur ADMIN rendu visible en attendant P07 |
+| categorie | Enum CLIENT existant ; combinaisons avec role à préciser |
+| zoneId | Toujours intersecté avec le périmètre serveur. Sens précis pour une ligne ADMIN (zone administrative) ou CLIENT (zone client), recherche sans zone et combinaisons à préciser |
+| compteActif, clientActif | Booléens distincts ; traitement de clientActif avec ADMIN et combinaisons à préciser |
+| sort | Champs autorisés, directions, ordre par défaut et départage stable À PRÉCISER P12 ; aucune règle implicite du framework ne vaut validation métier |
 
-Requête serveur : périmètre issu de PostgreSQL ET filtres demandés, **avant** limit/offset et count. Aucun chargement paginé réseau puis suppression en mémoire. LOCAL ne voit pas les clients sans zone ni les comptes administrateurs dont la visibilité reste P07. GLOBAL peut consulter le réseau dans les limites des opérations définies.
+Périmètre de lecture à appliquer **dans PostgreSQL, avant limit/offset et count** :
 
-PageResponse conceptuel stable : content, page, size, totalElements, totalPages. Tous les totaux sont calculés dans le même périmètre. Filtres impossibles/incohérents : validation 400 proposée ; ne jamais ignorer un filtre d'une manière qui élargit les permissions.
+| Acteur | Restriction obligatoire, indépendante des filtres demandés |
+|---|---|
+| GLOBAL | Ensemble des comptes autorisés à la consultation réseau |
+| LOCAL | Compte.role = CLIENT ET Client.zone.id = zoneAdminId de l'acteur relu en base ; Client.zone non nulle |
+| Autre acteur ou profil administratif incohérent | Aucune lecture administrative autorisée |
 
-CompteAdministrationResponse conceptuel commun liste/détail :
+Assembler une seule définition du périmètre, réutilisée pour la sélection paginée, le total et le détail. Le résultat est l'intersection de ce périmètre et des filtres valides. Aucun findAll réseau suivi d'un filtrage Java, aucune page réseau filtrée après coup, aucun count global pour LOCAL. Un filtre Angular de zone, rôle ou catégorie ne remplace jamais le périmètre.
 
-- compteId, identifiant, role.
-- clientId, numeroClient, categorie, zoneClientId si CLIENT.
-- perimetreAdmin, zoneAdminId si ADMIN.
-- compteActif ; clientActif nullable pour ADMIN ; accesEffectif calculé sur les deux états applicables.
-- actionsAutorisees envisageable pour l'interface, uniquement calculé côté backend ; sa forme reste à stabiliser. Son absence ne justifie aucun contrôle fondé seulement sur Angular.
+PageResponse conceptuel : content (DTO explicites), page, size, totalElements, totalPages. Les compteurs décrivent uniquement le même ensemble filtré et autorisé que content. Sans résultats autorisés : 200 avec contenu vide et total nul proposé, sans indication de comptes hors périmètre. En concurrence, liste et total doivent conserver le même prédicat ; une éventuelle exigence d'instantané strict reste à préciser, sans promesse d'isolation nouvelle.
 
-Pas de password, passwordHash, secret, jeton de preuve, entité JPA ou stack trace. Pas d'e-mail dans la liste par défaut ; son éventuelle consultation détaillée demande une justification métier et un contrat explicite.
+Les entrées mal formées ou valeurs hors des domaines qui seront validés donneront 400. Pour un filtre syntaxiquement valide mais incompatible avec le rôle, la catégorie ou le périmètre, décider le traitement (rejet ou intersection vide) avant implémentation ; ne pas utiliser ce cas pour révéler des lignes hors périmètre. Les défauts et limites de Spring Pageable ne doivent pas devenir des choix fonctionnels implicites.
 
-### GET /api/admin/comptes/{id}
+### 5.3 DTO commun liste et détail
 
-Même DTO et mêmes règles de rôle/type/périmètre que la liste. id positif valide ; 400 si entrée invalide, 401 sans authentification, 403 si rôle ou périmètre insuffisant, 404 si compte inexistant dans le périmètre autorisé. Le message 403 ne divulgue pas les attributs d'un compte hors zone. Une éventuelle politique d'occultation par 404 doit être décidée explicitement avant implémentation.
+CompteAdministrationResponse conceptuel, mappé explicitement sans sérialiser Compte ou Client :
+
+| Champs | Signification / exposition proposée |
+|---|---|
+| compteId, identifiant, role | Identité technique et login existants. CLIENT : identifiant = numeroClient généré. ADMIN : identifiant contient l'e-mail de connexion ; il est visible au GLOBAL pour les lignes ADMIN autorisées |
+| clientId, numeroClient, categorie, zoneClientId | Champs CLIENT ; zone nulle admise pour VIP/OCCASIONNEL. Nuls pour ADMIN |
+| perimetreAdmin, zoneAdminId | Champs ADMIN ; zone nulle pour GLOBAL. Nuls pour CLIENT |
+| compteActif, clientActif, accesEffectif | Statut technique, statut métier nullable pour ADMIN et accès effectif dérivé selon A8 |
+
+accesEffectif décrit les deux statuts persistés : Compte.actif pour ADMIN ; Compte.actif ET Client.actif pour CLIENT. Il ne prétend ni valider un JWT particulier ni attribuer une permission. La lecture de ces champs ne crée aucun droit de bascule de statut.
+
+**Visibilité des e-mails :** l'e-mail de connexion ADMIN fait partie de identifiant ; interdire tous les e-mails tout en exposant ce champ serait contradictoire avec DEC-COMPTES-003. Le contact CLIENT n'est pas son login et n'est pas inclus dans le DTO commun proposé, en liste comme en détail. Son éventuelle consultation future exige une finalité, une permission et un contrat explicites. Cette distinction n'accorde aucune visibilité de comptes ADMIN à LOCAL.
+
+Aucun password, passwordHash, secret JWT, jeton de preuve, entité JPA ou stack trace. Ne pas lire le registre privé pour alimenter le DTO. actionsAutorisees est différé : les opérations d'écriture et leurs droits ne sont pas entièrement spécifiés. Toute future aide d'affichage devra être dérivée du backend et ne remplacera pas ses contrôles.
+
+### 5.4 GET /api/admin/comptes/{id} et erreurs sans divulgation
+
+id désigne Compte.id, conservé ; il ne s'agit ni du matricule ni d'un login libre. Même DTO et même périmètre que la liste. Valider la forme de l'id selon le contrat retenu (400 pour entrée invalide), puis rechercher le compte **avec le périmètre dans la requête**.
+
+| Situation | État / réponse |
+|---|---|
+| Authentification absente, JWT invalide/expiré ou compte appelant indisponible | 401, mécanisme existant conservé |
+| Acteur authentifié sans droit d'opération administrative, notamment CLIENT | 403 avant toute recherche d'existence de la cible |
+| Détail autorisé trouvé dans le périmètre | 200 proposé, DTO uniquement |
+| Compte absent ou hors périmètre du lecteur | Refus sans données confirmé ; recommandation d'un même 404 générique dans les deux cas, **À VALIDER P12** |
+
+L'ancienne proposition 403 pour une cible hors zone et 404 pour une cible inexistante n'est pas retenue comme règle définitive : cette différence peut révéler l'existence d'un compte, même sans ses attributs. La recommandation P12 utilise le même résultat de recherche filtrée et ne lance pas de recherche globale de secours pour distinguer les deux cas. Le message et le code d'erreur doivent rester identiques pour absent/invisible. 403 reste disponible pour une interdiction d'opération établie indépendamment de l'existence de la cible. Les garanties contre la divulgation d'existence devront être testées ; le seul code HTTP ne démontre pas l'absence de tous canaux auxiliaires.
+
+Aucun contrat de mutation ne se déduit de ce choix de lecture. La politique exacte 403/404 devra être validée avant le lot de développement ; aucun de ces GET n'est annoncé comme livré.
+
+### 5.5 Réutilisation et responsabilités du futur lot
+
+Controller : validation HTTP et DTO. Un seul service de gestion des comptes : autorisation, périmètre de lecture et orchestration en transaction de lecture. CompteRepository existant : requêtes filtrées et pagination ; ClientRepository et ZoneRepository seulement si utiles, sans repository concurrent pour les mêmes données. Mapper : conversion explicite des champs de la section 5.3.
+
+Compléter AdminAuthorization dans sa responsabilité actuelle ; ne pas créer un second service de permissions. canManageZone refuse actuellement une zone nulle même pour GLOBAL : ne pas l'appeler tel quel pour conclure qu'un GLOBAL ne peut pas consulter un client sans zone. Ajouter ultérieurement la politique de consultation nécessaire dans cette même classe, sans relâcher globalement son contrat pour les autres opérations. Le service et les requêtes doivent partager la même décision de périmètre.
+
+Conserver AuthService, le PasswordEncoder BCrypt, TokenService et le rechargement du principal depuis PostgreSQL. Réutiliser GlobalExceptionHandler et ApiErrorResponse ; ajouter ultérieurement le traitement métier de ressource introuvable selon P12, sans second format d'erreurs. Cache-Control: no-store est recommandé pour les réponses administratives.
+
+Aucun changement de schéma nécessaire pour définir ces lectures. Des index ne seront proposés qu'après choix des requêtes et analyse de leur utilité, via nouvelle migration si nécessaire ; V1–V4 restent inchangées. Invitations, créations, statuts, transitions et Angular sont hors du lot 3A.
 
 ## 6. Création administrative — PROPOSÉE
 
@@ -175,8 +225,8 @@ Réutiliser ApiErrorResponse : timestamp, status, code, message, path, validatio
 |---|---|
 | 400 | JSON, champ, enum, filtre ou identifiant de ressource invalide |
 | 401 | Authentification absente/invalide/expirée ; login incorrect ou compte indisponible |
-| 403 | Principal authentifié sans rôle, habilitation ou périmètre requis |
-| 404 | Ressource autorisée introuvable |
+| 403 | Principal authentifié sans droit d'opération ; pour le détail administratif proposé, distinguer ce refus de l'absence/invisibilité selon P12 |
+| 404 | Ressource autorisée introuvable ; occultation d'un détail invisible recommandée mais à valider P12 |
 | 409 | Unicité, invariant métier ou conflit concurrent |
 
 Ne pas renvoyer la valeur rejetée d'un mot de passe, une requête SQL, un nom technique de contrainte ou une stack trace. Réponses d'erreur de connexion génériques. Conserver les réponses sensibles sans mise en cache ; politique no-store recommandée également pour les DTO administratifs.
