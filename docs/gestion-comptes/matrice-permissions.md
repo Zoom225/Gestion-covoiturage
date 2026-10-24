@@ -1,5 +1,8 @@
 # Matrice des permissions — gestion des comptes
 
+**Actualisation — lot 3C.1 / issue [#19](https://github.com/Zoom225/Gestion-covoiturage/issues/19) :** DEC-COMPTES-004 ajoute INVITE/INITIALISE. Compte invité sans hash, accès refusé y compris par JWT ; INITIALISE et activités sont indépendants. Les comptes préexistants restent INITIALISES. Seul le socle est livré ; jetons, e-mails et création administrative restent futurs. Voir [modèle, migration V5 et preuves](lot-3c1-comptes-invites.md).
+
+
 **État courant — lot 3B / issue [#15](https://github.com/Zoom225/Gestion-covoiturage/issues/15) :** consultation administrative implémentée selon les règles validées le 24 octobre 2026. GLOBAL consulte le réseau ; LOCAL seulement les comptes CLIENT de sa zone, sans visibilité des comptes ADMIN. Pagination 0/20/100, ordre compteId croissant, recherche exacte sans casse, filtres par intersection et même 404 pour absent/invisible. Les propositions du lot 3A ci-dessous sont historiques lorsqu'elles sont remplacées par cet état. Voir [architecture, contrat et preuves TFE](lot-3b-consultation.md).
 
 **État courant — lot 2 / #11 :** POST login accepte l'e-mail ADMIN ou le matricule CLIENT sans distinction de casse ; GET me conserve les droits issus de PostgreSQL. V4 impose stockage canonique et cohérence Client/Compte sans réécrire les anciens comptes. Les formulations antérieures décrivent l'historique. Voir [contrat livré et tests AC-AUTH](lot-2-authentification.md).
@@ -91,6 +94,8 @@ Une ligne AUTORISÉ n'annule pas les préconditions ouvertes : aucun parcours d�
 Les statuts des comptes consultés sont des données de lecture A8 ; ils ne donnent pas de droit de modification. L'acteur doit lui-même disposer d'un accès effectif valide. Dans le DTO proposé, l'identifiant d'une ligne ADMIN est son e-mail de connexion ; l'e-mail de contact CLIENT est exclu du DTO commun. Les règles exactes de recherche, tri, pagination et réponses de détail ont été validées pour le lot 3B ; voir la source contractuelle unique en [section 5](contrats-api.md#5-consultation-administrative--implémentée-lot-3b).
 
 ## 4. Invariants indépendants de l'interface
+
+- Lot 3C.1 / DEC-COMPTES-004 : INVITE ne peut ni se connecter ni utiliser un JWT ; INITIALISE ne dispense pas des activités et permissions. Aucun changement implicite de Compte.actif/Client.actif. Les cibles invitées restent consultables selon le même périmètre GLOBAL/LOCAL, sans nouveau droit de mutation.
 
 - Rôle CLIENT et catégorie OCCASIONNEL imposés à l'inscription publique.
 - LOCAL toujours rattaché à une zone ; ADMIN LOCAL toujours lié à sa zone administrative.

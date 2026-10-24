@@ -34,7 +34,8 @@ public class AuthService {
             throw invalidCredentials();
         }
         var compte = comptes.findByIdentifiantIgnoringCase(request.identifiant()).orElse(null);
-        boolean matches = passwords.matches(request.password(), compte == null ? dummyHash : compte.getPasswordHash());
+        String hash = compte == null ? null : compte.getPasswordHash();
+        boolean matches = passwords.matches(request.password(), hash == null ? dummyHash : hash);
         if (!matches || compte == null || !compte.isAccesEffectif()) {
             throw invalidCredentials();
         }

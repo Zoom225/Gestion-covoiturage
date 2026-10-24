@@ -400,3 +400,13 @@ La [connexion DEC-COMPTES-003](docs/gestion-comptes/lot-2-authentification.md), 
 ## Lot 3B — consultation administrative des comptes
 
 Les deux GET /api/admin/comptes et /api/admin/comptes/{id} sont décrits dans les [contrats courants](docs/gestion-comptes/contrats-api.md#5-consultation-administrative--implémentée-lot-3b), avec GLOBAL réseau, LOCAL limité aux CLIENT de sa zone, filtres avant pagination/count et 404 uniforme absent/invisible. Les sections des lots précédents restent historiques. Le [dossier TFE du lot 3B](docs/gestion-comptes/lot-3b-consultation.md) précise architecture, modèle conservé, sécurité, tests et couverture partielle AA1–AA11. Aucune création de compte, invitation, mutation ou migration nouvelle.
+
+## Lot 3C.1 — socle des comptes invités
+
+Le [dossier du lot 3C.1](docs/gestion-comptes/lot-3c1-comptes-invites.md), issue #19,
+décrit DEC-COMPTES-004 : INVITE sans mot de passe, INITIALISE avec hash BCrypt.
+V5 conserve les anciens comptes initialisés ; les activités compte/client restent indépendantes.
+Login et JWT refusent INVITE. Le DTO administratif expose seulement l'état non sensible.
+Aucun jeton d'invitation, envoi d'e-mail, endpoint de création ou compte fictif n'est ajouté.
+Les preuves PostgreSQL/HTTP et limites AA figurent dans le dossier du lot.
+V5 est testée dans Testcontainers ; la base de développement n'est pas migrée pendant cette livraison.

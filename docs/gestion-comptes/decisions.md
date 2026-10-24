@@ -1,5 +1,8 @@
 # Gestion centralisée des comptes — décisions
 
+**Actualisation — lot 3C.1 / issue [#19](https://github.com/Zoom225/Gestion-covoiturage/issues/19) :** DEC-COMPTES-004 ajoute INVITE/INITIALISE. Compte invité sans hash, accès refusé y compris par JWT ; INITIALISE et activités sont indépendants. Les comptes préexistants restent INITIALISES. Seul le socle est livré ; jetons, e-mails et création administrative restent futurs. Voir [modèle, migration V5 et preuves](lot-3c1-comptes-invites.md).
+
+
 **État courant — lot 3B / issue [#15](https://github.com/Zoom225/Gestion-covoiturage/issues/15) :** consultation administrative implémentée selon les règles validées le 24 octobre 2026. GLOBAL consulte le réseau ; LOCAL seulement les comptes CLIENT de sa zone, sans visibilité des comptes ADMIN. Pagination 0/20/100, ordre compteId croissant, recherche exacte sans casse, filtres par intersection et même 404 pour absent/invisible. Les propositions du lot 3A ci-dessous sont historiques lorsqu'elles sont remplacées par cet état. Voir [architecture, contrat et preuves TFE](lot-3b-consultation.md).
 
 Dossier de l'[issue #7](https://github.com/Zoom225/Gestion-covoiturage/issues/7), établi le 21 octobre 2026.
@@ -27,12 +30,12 @@ L'énoncé définit catégories, préfixes, périmètres, authentification et mo
 
 | Élément inspecté | Fonctionnement constaté | Limite actuelle |
 |---|---|---|
-| [Compte](../../src/main/java/com/plateforme/covoiturage/entity/Compte.java) | Identifiant unique, hash BCrypt, actif, rôle CLIENT/ADMIN ; client exclusif ou périmètre administratif | ADMIN : e-mail porté par identifiant ; invitation non livrée |
+| [Compte](../../src/main/java/com/plateforme/covoiturage/entity/Compte.java) | Identifiant unique, EtatIdentifiants INVITE/INITIALISE, hash BCrypt conditionnel, actif, rôle CLIENT/ADMIN ; client exclusif ou périmètre administratif | ADMIN : e-mail porté par identifiant ; invitation non livrée |
 | [Client](../../src/main/java/com/plateforme/covoiturage/entity/Client.java) | Numéro unique, catégorie, actif, zone facultative sauf LOCAL | Générateur V/C/O livré au lot 1 ; API de création/transitions non livrées |
 | [Zone](../../src/main/java/com/plateforme/covoiturage/entity/Zone.java) | Identité technique et nom | Pas d'état ni de code métier ; CRUD non livré |
 | Enums existants | RoleTechnique CLIENT/ADMIN ; PerimetreAdmin GLOBAL/LOCAL ; CategorieClient VIP/LOCAL/OCCASIONNEL | Ne pas créer cinq rôles ou tables d'utilisateurs |
 | [CompteRepository](../../src/main/java/com/plateforme/covoiturage/repository/CompteRepository.java) | Login lower ; lot 3B : sélection et détail par Specification, EntityGraph client/zones | Périmètre appliqué par CompteService avant pagination/count ; pas de mutation administrative |
-| [AuthService](../../src/main/java/com/plateforme/covoiturage/service/AuthService.java) | Login BCrypt, erreur générique, refus au-delà de 72 octets UTF-8 ; contrôle Compte.actif et Client.actif | Pas d'inscription ou de gestion administrative |
+| [AuthService](../../src/main/java/com/plateforme/covoiturage/service/AuthService.java) | Login BCrypt, erreur générique, refus au-delà de 72 octets UTF-8 ; contrôle INITIALISE, Compte.actif et Client.actif | Pas d'inscription ou de gestion administrative |
 | [TokenService](../../src/main/java/com/plateforme/covoiturage/service/TokenService.java) | JWT HS256 : sujet = id Compte ; émetteur, audience, dates, identifiant du jeton | Pas de refresh token ni révocation individuelle |
 | [AuthController](../../src/main/java/com/plateforme/covoiturage/controller/AuthController.java) | POST login et GET me ; réponses no-store | Deux opérations d'authentification seulement |
 | [ProfileResponse](../../src/main/java/com/plateforme/covoiturage/dto/response/ProfileResponse.java) | Rôle, catégorie, périmètre et zones issus de PostgreSQL | identifiant contient le matricule CLIENT ; états détaillés non exposés |
@@ -115,6 +118,18 @@ Aucune valeur concrète du registre privé n'est publiée.
 Voir [implémentation, limites et tests du lot](lot-1-numerotation.md). Longueurs/normalisation détaillée, reprise des anciens comptes,
 permissions et effets des transitions restent à préciser avant les lots correspondants.
 
+## 3 bis. DEC-COMPTES-004 — initialisation des identifiants
+
+**VALIDÉE — lot 3C.1, issue [#19](https://github.com/Zoom225/Gestion-covoiturage/issues/19).**
+EtatIdentifiants distingue INVITE (password_hash NULL) et INITIALISE (hash BCrypt valide).
+V5 conserve tous les comptes préexistants INITIALISES, avec IDs, hashes et activités inchangés.
+INITIALISE est un prérequis à la connexion et à la résolution d'un JWT, sans réactivation implicite.
+Ce n'est pas une preuve d'e-mail ni une permission. Le DTO administratif expose uniquement cet état non sensible.
+
+Cette décision complète A7/A8 et résout le modèle d'invité en P06. DEC-COMPTES-001/002/003
+et A1–A6/A9 ne sont pas remplacées. Aucun jeton, envoi, endpoint de création ou compte fictif
+n'est livré. [Modèle, migration, tests et limites](lot-3c1-comptes-invites.md).
+
 ## 4. Décisions A1–A9
 
 ### A1 — numérotation
@@ -192,7 +207,7 @@ L'invitation n'est pas déclarée automatiquement équivalente à une vérificat
 
 Conserver la limite applicable de 72 octets UTF-8 et refuser tout dépassement sans troncature. La longueur en caractères seule ne suffit pas. Politique minimale et durées : P08.
 
-Backend : cycle de vie des comptes réutilisant l'encodeur et AuthService ; consommation atomique et empreinte des jetons recommandées, sans mécanisme JWT de connexion parallèle. PostgreSQL : hash actuel NOT NULL avec CHECK BCrypt ; un invité sans mot de passe nécessite une modélisation explicite P06, sans mot de passe par défaut. Angular : parcours invitation/changement/réinitialisation futurs ; ne pas conserver le mot de passe après soumission. Tests AC16/AC17/AC24/AC27 ; RM01–RM03/RM60.
+Backend : cycle de vie des comptes réutilisant l'encodeur et AuthService ; consommation atomique et empreinte des jetons recommandées, sans mécanisme JWT de connexion parallèle. PostgreSQL : historiquement V2 imposait un hash NOT NULL ; V5 (DEC-COMPTES-004) autorise NULL uniquement pour INVITE et impose un hash BCrypt de format/coût valide pour INITIALISE. Aucun mot de passe par défaut ; le protocole d'invitation reste à spécifier. Angular : parcours invitation/changement/réinitialisation futurs ; ne pas conserver le mot de passe après soumission. Tests AC16/AC17/AC24/AC27 ; RM01–RM03/RM60.
 
 Complément documentaire : DEC-COMPTES-002 autorise la convention de mot de passe initial uniquement pour un futur jeu fictif en développement/démonstration isolé. Les parcours normaux conservent le choix utilisateur ou l'invitation A7 ; la production reste exclue. Tests AC32–AC38.
 
@@ -200,7 +215,7 @@ Complément documentaire : DEC-COMPTES-002 autorise la convention de mot de pass
 
 **VALIDÉ :** Compte.actif = accès technique ; Client.actif = état métier. Conserver les deux contrôles ; modifier l'un ne change pas implicitement l'autre. Afficher les deux et l'accès effectif ; historiser les modifications.
 
-Accès CLIENT = Compte.actif ET Client.actif ; ADMIN = Compte.actif, sous les autres contrôles JWT. La vérification d'e-mail précède l'activation publique sans réactiver un client métier désactivé. Réactivation, droits de bascule et valeur initiale Client.actif : P09.
+Accès CLIENT = INITIALISE ET Compte.actif ET Client.actif ; ADMIN = INITIALISE ET Compte.actif, sous les autres contrôles JWT. L'état d'initialisation est indépendant des deux activités ; ni un changement d'état ni V5 ne les réactive. La vérification d'e-mail précède l'activation publique sans réactiver un client métier désactivé. Réactivation, droits de bascule et valeur initiale Client.actif : P09.
 
 Backend : changement explicite et audit, effet immédiat via relecture en base même avec ancien JWT. PostgreSQL : booléens conservés, historique futur. Angular : colonnes distinctes et aucun bouton ambigu « utilisateur actif ». Tests AC12/AC13/AC22/AC25 ; RM13/RM60.
 
@@ -231,7 +246,7 @@ Ces recommandations ne sont pas des permissions supplémentaires.
 | P03 | E-mail public obligatoire ; pas de zone automatique ; autres champs, unicité e-mail et zone manuelle non définis | DTO public minimal e-mail de contact/mot de passe ; matricule et login CLIENT générés par le serveur, aucun identifiant libre ; zone provisoirement exclue (correction lot 3A, DEC-COMPTES-003) | Validation / coordonnées et éventuels index / formulaire minimal | AC01/AC04/AC05 |
 | P04 | V2 impose au plus un Compte par Client ; nombre de comptes par personne non défini | Conserver relation existante ; définir la notion de personne avant assouplissement | Politique anti-doublon / UNIQUE client_id conservé / conflits explicites | AC06/AC29 et cas multi-comptes futurs |
 | P05 | VIP GLOBAL, LOCAL GLOBAL ou LOCAL habilité ; conditions VIP, habilitation, autres transitions et réservations futures ouvertes | Aucune condition commerciale inventée ; matrice des transitions et analyse des réservations | Politique transactionnelle / audit et concurrence / motif et actions | AC18–AC20 et effets futurs à spécifier |
-| P06 | Premier GLOBAL opérateur, autres GLOBAL seuls, invitations ; procédure, invité sans hash et modification de périmètre ouverts | Amorçage ponctuel ; profil en attente explicite ; étendre la protection aux futures réductions du nombre de GLOBAL | Procédure / schéma invitation compatible sans changer V2 / invitation sans mot de passe admin | AC16/AC17/AC22/AC23 |
+| P06 | Modèle invité sans hash VALIDÉ et livré au lot 3C.1 (DEC-COMPTES-004/V5) ; procédure premier GLOBAL, protocole d'invitation, verrou du dernier GLOBAL et modification de périmètre toujours ouverts | Amorçage ponctuel et réduction des GLOBAL à préciser ; aucun mot de passe initial inventé | Réutiliser l'état INVITE/INITIALISE / futurs jetons séparés de V5 / aucun endpoint de création livré | AC-INIT01–AC-INIT08 ; AC16/AC17/AC22/AC23 futurs |
 | P07 | Lot 3B : GLOBAL réseau ; LOCAL seulement CLIENT de sa zone, aucun ADMIN ni sans-zone. Création par LOCAL et CRUD zones restent non détaillés | Lecture fixée par le responsable ; aucun droit de mutation supplémentaire ; profil personnel via me | Politique unique AdminAuthorization et CompteRepository filtré / aucune migration / tableau limité au contrat | AC14/AC15 ; AC-CONS01–AC-CONS08 automatisés ; AC21 pour mutations futures |
 | P08 | Jetons limités à usage unique et limite BCrypt ; durées et politique minimale non fixées | Durées configurables et empreintes ; décider révocation après changement du mot de passe | Cycle de vie et anti-abus / consommation atomique / expiration et messages | AC10/AC24/AC26/AC27 |
 | P09 | Deux activités et vérification avant activation ; réactivation, droits de bascule et activité métier initiale ouverts | Activation conditionnelle sans réactiver implicitement Client | Statuts / historique et préconditions / affichage des deux états | AC12/AC13/AC25 |
@@ -249,6 +264,8 @@ Ces recommandations ne sont pas des permissions supplémentaires.
 Les séquences, l'historique et l'unicité normalisée sont livrés par V3/V4. Après arbitrages, de futures migrations pourront traiter les coordonnées et preuves d'e-mail, invitations/réinitialisation et traces des nouvelles opérations ; aucune n'est nécessaire à la consultation du lot 3B. Auditer numéros et collisions de login avant contraintes ; aucune réécriture automatique autorisée ici. Les fixtures de sécurité changent actuellement la catégorie en conservant V0001 : une future contrainte préfixe/catégorie exigera leur adaptation en conservant la preuve qu'une catégorie ne donne jamais ADMIN.
 
 Risques : escalade par JSON, accès hors zone, fuite des totaux, attribution VIP par LOCAL, inscription massive, réutilisation ou consommation concurrente de jetons, double désactivation GLOBAL, collisions et perte d'historique. Autoriser l'inscription future par méthode/route exactes, sans permitAll global sur /api/auth/**. Conserver PostgreSQL, JWT, Swagger, données et secrets.
+
+[V5](../../src/main/resources/db/migration/V5__account_credential_state.sql) ajoute l'état d'initialisation et la cohérence état/hash, sans modifier V1–V4 ni les activités. Le [lot 3C.1](lot-3c1-comptes-invites.md) décrit sa validation sur PostgreSQL jetable ; aucune application à la base de développement pendant ce lot.
 
 ## 7. Traçabilité RM01–RM60
 
