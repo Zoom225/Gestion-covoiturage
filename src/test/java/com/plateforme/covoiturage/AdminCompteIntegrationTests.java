@@ -317,7 +317,7 @@ class AdminCompteIntegrationTests {
         for (var item : json.readTree(response.body()).path("content")) {
             assertThat(json.convertValue(item, new TypeReference<Map<String, Object>>() {}).keySet()).containsExactlyInAnyOrder(
                     "compteId", "identifiant", "role", "clientId", "numeroClient", "categorie",
-                    "zoneClientId", "perimetreAdmin", "zoneAdminId", "compteActif", "clientActif", "accesEffectif");
+                    "zoneClientId", "perimetreAdmin", "zoneAdminId", "compteActif", "clientActif", "etatIdentifiants", "accesEffectif");
         }
         var admin = json.readTree(get(API + "/" + global.getId(), token).body());
         assertThat(admin.path("identifiant").asText()).isEqualTo(global.getIdentifiant());

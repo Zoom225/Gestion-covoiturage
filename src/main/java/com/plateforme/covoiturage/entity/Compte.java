@@ -1,5 +1,6 @@
 package com.plateforme.covoiturage.entity;
 
+import com.plateforme.covoiturage.enums.EtatIdentifiants;
 import com.plateforme.covoiturage.enums.PerimetreAdmin;
 import com.plateforme.covoiturage.enums.RoleTechnique;
 import jakarta.persistence.*;
@@ -19,8 +20,12 @@ public class Compte {
     @Column(nullable = false, unique = true, length = 100)
     private String identifiant;
 
-    @Column(name = "password_hash", nullable = false, length = 60)
+    @Column(name = "password_hash", length = 60)
     private String passwordHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "etat_identifiants", nullable = false, length = 10)
+    private EtatIdentifiants etatIdentifiants;
 
     @Column(nullable = false)
     private boolean actif;
@@ -43,17 +48,26 @@ public class Compte {
 
     /** État d'accès commun à l'authentification et à la consultation administrative. */
     public boolean isAccesEffectif() {
-        return actif && (client == null || client.isActif());
+        return etatIdentifiants == EtatIdentifiants.INITIALISE && actif && (client == null || client.isActif());
     }
 
     public Compte(String identifiant, String passwordHash, boolean actif, RoleTechnique role,
                   Client client, PerimetreAdmin perimetreAdmin, Zone zoneAdmin) {
         this.identifiant = identifiant;
         this.passwordHash = passwordHash;
+        this.etatIdentifiants = EtatIdentifiants.INITIALISE;
         this.actif = actif;
         this.role = role;
         this.client = client;
         this.perimetreAdmin = perimetreAdmin;
         this.zoneAdmin = zoneAdmin;
+    }
+
+    /** Prépare le domaine uniquement ; aucun compte n'est créé au démarrage. */
+    public static Compte invite(String identifiant, boolean actif, RoleTechnique role,
+                                Client client, PerimetreAdmin perimetreAdmin, Zone zoneAdmin) {
+        var compte = new Compte(identifiant, null, actif, role, client, perimetreAdmin, zoneAdmin);
+        compte.etatIdentifiants = EtatIdentifiants.INVITE;
+        return compte;
     }
 }

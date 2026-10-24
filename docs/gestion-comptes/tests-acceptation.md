@@ -1,5 +1,8 @@
 # Tests d'acceptation — comptes centralisés
 
+**Actualisation — lot 3C.1 / issue [#19](https://github.com/Zoom225/Gestion-covoiturage/issues/19) :** DEC-COMPTES-004 ajoute INVITE/INITIALISE. Compte invité sans hash, accès refusé y compris par JWT ; INITIALISE et activités sont indépendants. Les comptes préexistants restent INITIALISES. Seul le socle est livré ; jetons, e-mails et création administrative restent futurs. Voir [modèle, migration V5 et preuves](lot-3c1-comptes-invites.md).
+
+
 **État courant — lot 3B / issue [#15](https://github.com/Zoom225/Gestion-covoiturage/issues/15) :** consultation administrative implémentée selon les règles validées le 24 octobre 2026. GLOBAL consulte le réseau ; LOCAL seulement les comptes CLIENT de sa zone, sans visibilité des comptes ADMIN. Pagination 0/20/100, ordre compteId croissant, recherche exacte sans casse, filtres par intersection et même 404 pour absent/invisible. Les propositions du lot 3A ci-dessous sont historiques lorsqu'elles sont remplacées par cet état. Voir [architecture, contrat et preuves TFE](lot-3b-consultation.md).
 
 **État courant — lot 2 / #11 :** POST login accepte l'e-mail ADMIN ou le matricule CLIENT sans distinction de casse ; GET me conserve les droits issus de PostgreSQL. V4 impose stockage canonique et cohérence Client/Compte sans réécrire les anciens comptes. Les formulations antérieures décrivent l'historique. Voir [contrat livré et tests AC-AUTH](lot-2-authentification.md).
@@ -11,7 +14,7 @@
 [Décisions](decisions.md) · [Permissions](matrice-permissions.md) · [Contrats](contrats-api.md).
 Issue [#7](https://github.com/Zoom225/Gestion-covoiturage/issues/7), 21 octobre 2026.
 
-**Les 38 scénarios AC01–AC38 restent un référentiel documentaire de parcours partiellement futurs ; ils ne constituent pas 38 tests exécutés.** Depuis le lot 3B, AC-CONS01–AC-CONS08 correspondent à des tests de consultation réellement exécutables. Les inscriptions, invitations, créations et mutations restent non implémentées ; leurs attentes ouvertes ne sont pas inventées.
+**Les 38 scénarios AC01–AC38 restent un référentiel documentaire de parcours partiellement futurs ; ils ne constituent pas 38 tests exécutés.** Depuis le lot 3B, AC-CONS01–AC-CONS08 correspondent à des tests de consultation réellement exécutables. Les inscriptions, protocoles d'invitation, créations et mutations restent non implémentés ; seul le socle INVITE/INITIALISE est ajouté au lot 3C.1 ; leurs attentes ouvertes ne sont pas inventées.
 
 **Actualisation documentaire — lot 3A / issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13), 24 octobre 2026 :** base origin/master 39a7b6b (PR #10 et #12 fusionnées). Aucun endpoint administratif livré par ce lot. Le matricule CLIENT est le login généré ; l'e-mail de connexion ADMIN est distinct du contact CLIENT. Les droits de lecture confirmés et les modalités encore ouvertes sont séparés dans les [contrats de consultation](contrats-api.md#5-consultation-administrative--implémentée-lot-3b).
 
@@ -145,3 +148,33 @@ Les nouveaux tests de numéros ne doivent pas supprimer le test où les trois ca
 - JWT, rôles et périmètres : AA6 ; contrats REST : AA7 ; Angular : AA8 ; validations/erreurs : AA9 ; automatisation future, Git et CI : AA10.
 - Les RM directement concernées et toutes les RM hors implémentation sont classées dans les [décisions](decisions.md). AC20 ne prétend pas implémenter RM38/RM39 à lui seul : les modules réservation devront conserver leurs propres revalidations.
 - Une case À COMPLÉTER ne permet pas de choisir implicitement une règle métier. La décision correspondante doit précéder le code et le résultat de test.
+
+## Lot 3C.1 — AC-INIT : socle livré, parcours d'invitation futurs
+
+Ces huit regroupements de scénarios ne s'ajoutent pas au décompte historique des 38 AC01–AC38.
+La classe InvitedAccountIntegrationTests comporte des tests simples et paramétrés distincts ;
+le nombre réellement exécuté figure dans le [dossier du lot](lot-3c1-comptes-invites.md).
+AC16/AC27/AC37 restent partiellement futurs : aucun jeton, e-mail ou endpoint de création livré.
+
+| Scénario | Given | When | Then | Preuve automatisée |
+|---|---|---|---|---|
+| AC-INIT01 | Installation V1 puis V4 avec cinq profils préexistants | V5 migre sur PostgreSQL Testcontainers | Comptes existants INITIALISES ; IDs, hashes, relations, activités et historique conservés ; aucun compte généré | upgradeV1ToV5PreservesReferentialsAndDoesNotSeedAccounts ; upgradeV4PreservesAllFiveProfilesIdsHashesRelationsAndIndependentActivityFlags |
+| AC-INIT02 | INVITE/INITIALISE, état inconnu ou NULL, hashes absents ou incompatibles | INSERT de contrainte | Seuls INVITE/NULL et INITIALISE/BCrypt compatible sont admis ; refus sans exposer la ligne dans les assertions | postgresRejectsInconsistentCredentialStates ; defaultPreservesInitializedWritersButNeverCreatesAHashlessInitializedAccount |
+| AC-INIT03 | Cinq profils INVITE sans hash | Login, puis JWT signé sub=Compte.id vers me/admin | Même 401 générique que l'identifiant inconnu ; aucun JWT de login ni principal authentifié | invitedProfilesHaveNoPasswordAndCannotLoginOrUseASignedJwt |
+| AC-INIT04 | Quatre combinaisons des activités compte/client | Persistance/relecture de l'invité | Activités inchangées ; accès toujours faux | invitedCredentialStateDoesNotChangeEitherActivityFlag |
+| AC-INIT05 | Invité inactif | Transaction incohérente puis mise à jour SQL atomique état/hash, seulement en test | Rollback complet ; une initialisation conforme ne réactive rien | stateAndHashMustChangeTogetherAndFailedTransactionPreservesActivityAndHash |
+| AC-INIT06 | Compte initialisé avec ancien JWT | Son état de test devient INVITE et le hash NULL | JWT refusé à la requête suivante, sans changement d'activité ; constructeur historique et JWT INITIALISE restent utilisables | databaseReadinessChangeInvalidatesAnAlreadyIssuedJwtWithoutChangingActivity ; initializedDomainConstructorStillSupportsLoginAndIdBasedJwt |
+| AC-INIT07 | GLOBAL/LOCAL et cibles invitées de zone/sans zone/ADMIN | Consultation liste, count et détail | DTO état sans secret ; périmètre avant pagination conservé, 404 pour cible invisible | adminReadExposesOnlySafeReadinessAndRetainsLocalScope ; tests AdminCompteIntegrationTests conservés |
+| AC-INIT08 | Ancien hash V4 au coût non pris en charge | Tentative V5 isolée | Arrêt générique sans secret, pas de réécriture ou migration partielle | unsupportedLegacyBcryptCostStopsMigrationWithoutRewritingOrLeakingHash |
+
+La preuve de non-divulgation inclut constraintFailureDoesNotExposeHashInExceptionOrApplicationLogs :
+violation JPA réelle, exception complète et journaux capturés sans mot de passe ni hash.
+
+RM01–RM03/RM13/RM49/RM51/RM58–RM60 ; contributions partielles AA3–AA7/AA9–AA11.
+Aucun test ne touche la base locale de développement. TTL, consommation concurrente de jetons,
+e-mails, invitation expirée/utilisée, politique minimale et anti-abus attendent le lot suivant.
+
+
+Résultat local final du lot 3C.1 (24 octobre 2026) : mvnw.cmd clean verify, **121 tests réussis,
+0 échec, 0 erreur, 0 ignoré**, dont 26 tests du nouveau socle et les 95 antérieurs.
+Aucune validation du parcours d'invitation complet n'en est déduite.

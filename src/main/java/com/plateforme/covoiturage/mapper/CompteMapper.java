@@ -16,6 +16,7 @@ public class CompteMapper {
                 client == null || client.getZone() == null ? null : client.getZone().getId(),
                 compte.getPerimetreAdmin(),
                 compte.getZoneAdmin() == null ? null : compte.getZoneAdmin().getId(),
-                compte.isActif(), client == null ? null : client.isActif(), compte.isAccesEffectif());
+                compte.isActif(), client == null ? null : client.isActif(),
+                compte.getEtatIdentifiants(), compte.isAccesEffectif());
     }
 }

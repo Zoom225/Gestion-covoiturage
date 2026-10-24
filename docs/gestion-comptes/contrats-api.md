@@ -1,5 +1,8 @@
 # Contrats REST — gestion centralisée des comptes
 
+**Actualisation — lot 3C.1 / issue [#19](https://github.com/Zoom225/Gestion-covoiturage/issues/19) :** DEC-COMPTES-004 ajoute INVITE/INITIALISE. Compte invité sans hash, accès refusé y compris par JWT ; INITIALISE et activités sont indépendants. Les comptes préexistants restent INITIALISES. Seul le socle est livré ; jetons, e-mails et création administrative restent futurs. Voir [modèle, migration V5 et preuves](lot-3c1-comptes-invites.md).
+
+
 **État courant — lot 3B / issue [#15](https://github.com/Zoom225/Gestion-covoiturage/issues/15) :** consultation administrative implémentée selon les règles validées le 24 octobre 2026. GLOBAL consulte le réseau ; LOCAL seulement les comptes CLIENT de sa zone, sans visibilité des comptes ADMIN. Pagination 0/20/100, ordre compteId croissant, recherche exacte sans casse, filtres par intersection et même 404 pour absent/invisible. Les propositions du lot 3A ci-dessous sont historiques lorsqu'elles sont remplacées par cet état. Voir [architecture, contrat et preuves TFE](lot-3b-consultation.md).
 
 **État courant — lot 2 / #11 :** POST login accepte l'e-mail ADMIN ou le matricule CLIENT sans distinction de casse ; GET me conserve les droits issus de PostgreSQL. V4 impose stockage canonique et cohérence Client/Compte sans réécrire les anciens comptes. Les formulations antérieures décrivent l'historique. Voir [contrat livré et tests AC-AUTH](lot-2-authentification.md).
@@ -27,7 +30,7 @@ Les créations spécialisées Client et Administrateur évitent un POST généri
 |---|---|---|---|
 | POST /api/auth/register | PROPOSÉ | Visiteur, exception publique limitée | 201 proposé, compte en attente |
 | POST /api/auth/login | EXISTANT | Public, identifiants requis | 200, TokenResponse |
-| GET /api/auth/me | EXISTANT | JWT et compte/client actifs | 200, ProfileResponse |
+| GET /api/auth/me | EXISTANT | JWT, état INITIALISE et compte/client actifs | 200, ProfileResponse |
 | GET /api/admin/comptes | EXISTANT lot 3B | GLOBAL réseau ; LOCAL seulement CLIENT de sa zone | 200, ComptePageResponse |
 | GET /api/admin/comptes/{id} | EXISTANT lot 3B | Même périmètre que la liste ; invisible = absent | 200, CompteAdministrationResponse |
 | POST /api/admin/clients | PROPOSÉ | ADMIN habilité selon catégorie et périmètre | 201, invitation en attente |
@@ -97,7 +100,7 @@ ProfileResponse existant :
 | clientId, categorie, zoneClientId | Champs client, nuls pour ADMIN ; zone facultative sauf LOCAL |
 | perimetreAdmin, zoneAdminId | GLOBAL sans zone ou LOCAL avec zone ; nuls pour CLIENT |
 
-200 et Cache-Control no-store. 401 si JWT absent/invalide/expiré ou compte/client indisponible. Le profil actuel n'expose pas les deux statuts, puisqu'il est réservé aux comptes autorisés ; ne pas le confondre avec le DTO administratif futur. Pas de duplication par /api/clients/me.
+200 et Cache-Control no-store. 401 si JWT absent/invalide/expiré, compte INVITE ou compte/client indisponible. Le profil actuel n'expose pas les deux statuts, puisqu'il est réservé aux comptes autorisés ; ne pas le confondre avec le DTO administratif futur. Pas de duplication par /api/clients/me.
 
 Frontend cible : formulaire commun → login → jeton en mémoire → me → validation de la combinaison du profil → destination A9. Aucune redirection déterminée seulement par un claim décodé ou le stockage navigateur.
 
@@ -156,9 +159,11 @@ Aucune requête d'existence globale de secours. Format ApiErrorResponse commun ;
 | compteId, identifiant, role | Identité technique et login. CLIENT : identifiant = numeroClient généré. ADMIN : identifiant est l'e-mail de connexion, visible au GLOBAL pour les comptes ADMIN consultables |
 | clientId, numeroClient, categorie, zoneClientId | Champs CLIENT ; nuls pour ADMIN. Zone facultative pour VIP/OCCASIONNEL |
 | perimetreAdmin, zoneAdminId | Champs ADMIN ; nuls pour CLIENT. GLOBAL sans zone administrative |
-| compteActif, clientActif, accesEffectif | Statuts distincts ; clientActif null pour ADMIN ; accès dérivé selon A8 |
+| compteActif, clientActif | Activités distinctes et indépendantes ; clientActif null pour ADMIN |
+| etatIdentifiants | INVITE ou INITIALISE, état non sensible ajouté au lot 3C.1 |
+| accesEffectif | Prérequis d'accès dérivés selon A8/DEC-COMPTES-004 |
 
-accesEffectif = Compte.actif pour ADMIN, Compte.actif ET Client.actif pour CLIENT. Le calcul est partagé avec AuthService dans Compte.isAccesEffectif ; il ne prétend pas valider un JWT particulier ni accorder une permission de mutation.
+accesEffectif = INITIALISE ET Compte.actif pour ADMIN, INITIALISE ET Compte.actif ET Client.actif pour CLIENT. INVITE est toujours sans accès, même avec un JWT signé. Le calcul est partagé avec AuthService dans Compte.isAccesEffectif ; il ne prétend pas valider un JWT particulier ni accorder une permission de mutation.
 
 **L'e-mail de connexion ADMIN est un identifiant de compte ; le contact CLIENT n'est pas son login et n'est pas exposé.** Aucun champ password, passwordHash, secret, jeton de preuve, contact CLIENT, entité JPA, stack trace ou actions de mutation n'est ajouté. Le registre privé ne participe à aucune réponse. Liste et détail portent Cache-Control: no-store.
 
