@@ -61,4 +61,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(404).body(ApiErrorResponse.of(404, "NOT_FOUND",
                 "Ressource introuvable", request.getRequestURI()));
     }
+
+    @ExceptionHandler(InvitationInvalideException.class)
+    ResponseEntity<ApiErrorResponse> invalidInvitation(HttpServletRequest request) {
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(400, "INVALID_INVITATION",
+                "Invitation indisponible ou invalide", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InvitationConflictException.class)
+    ResponseEntity<ApiErrorResponse> invitationConflict(HttpServletRequest request) {
+        return ResponseEntity.status(409).body(ApiErrorResponse.of(409, "INVITATION_CONFLICT",
+                "Opération d'invitation incompatible avec l'état courant", request.getRequestURI()));
+    }
 }
