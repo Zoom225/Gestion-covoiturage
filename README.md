@@ -2,6 +2,23 @@
 
 Backend Java Spring Boot de la plateforme de gestion d’un réseau de covoiturage multi-zones.
 
+## Démarrage local Windows — version récente
+
+Le [guide de développement local](docs/developpement-local.md) décrit le nouveau
+worktree, les fichiers privés, Docker Compose, IntelliJ et les vérifications Flyway.
+Configurer la référence privée une seule fois ; ne pas écraser un fichier existant.
+
+```powershell
+.\scripts\sync-compose-env.ps1
+docker compose up -d
+.\scripts\dev-up.ps1 -Port 8081
+```
+
+Pour les tests : `.\scripts\dev-test.ps1`. Dans IntelliJ, ouvrir le nouveau
+worktree et sélectionner la configuration partagée **DriveConnect — dev**
+sur le port 8081. Swagger expose les GET `/api/admin/comptes` et
+`/api/admin/comptes/{id}` ; leur utilisation reste protégée par JWT.
+
 ## Prérequis
 
 - Java 21
@@ -23,9 +40,9 @@ CREATE DATABASE carshare OWNER carshare;
 
 | Variable | Valeur par défaut | Description |
 | --- | --- | --- |
-| `DB_URL` | `jdbc:postgresql://localhost:5432/carshare` | URL JDBC PostgreSQL |
+| `DB_URL` | `jdbc:postgresql://127.0.0.1:15432/carshare` en dev ; `jdbc:postgresql://localhost:5432/carshare` hors dev | URL JDBC PostgreSQL |
 | `DB_USERNAME` | `carshare` | Utilisateur PostgreSQL |
-| `DB_PASSWORD` | vide | Mot de passe PostgreSQL |
+| `DB_PASSWORD` | obligatoire en dev ; vide hors dev | Mot de passe PostgreSQL |
 | `JWT_SECRET` | aucune | Clé HS256 en Base64, au moins 32 octets aléatoires ; obligatoire |
 | `JWT_ISSUER` | `driveconnect` | Émetteur attendu du JWT |
 | `JWT_AUDIENCE` | `driveconnect-api` | Audience attendue du JWT |

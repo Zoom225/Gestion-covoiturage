@@ -1,0 +1,18 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="DriveConnect — dev" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <option name="ALTERNATIVE_JRE_PATH" value="21" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <option name="ACTIVE_PROFILES" value="dev" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.plateforme.covoiturage.CovoiturageApplication" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="PASS_PARENT_ENVS" value="true" />
+    <option name="envFilePaths">
+      <option value="$PROJECT_DIR$/scripts/intellij-env.bat" />
+    </option>
+    <module name="covoiturage" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+    <option name="PROGRAM_PARAMETERS" value="--server.port=8081" />
+  </configuration>
+</component>

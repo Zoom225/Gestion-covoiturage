@@ -36,6 +36,7 @@ build/
 .env
 .env.*
 !.env.example
+!.env.local.example.ps1
 
 # Local fictional demo account registry; never commit this file.
 /scripts/demo/comptes-demo.local.csv
