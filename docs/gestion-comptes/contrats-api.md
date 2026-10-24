@@ -1,5 +1,8 @@
 # Contrats REST — gestion centralisée des comptes
 
+**Préparation du parcours complet — issue [#23](https://github.com/Zoom225/Gestion-covoiturage/issues/23) :** socle interne d'initialisation transactionnelle et outbox chiffrée en préparation. Les nouveaux endpoints, créations administratives et bootstrap ne sont pas livrés : droits LOCAL (P05/P07), activités initiales (P09) et politique minimale du mot de passe (P08) attendent un arbitrage. Voir [état réel, sécurité et limites](parcours-invitations-preparation.md).
+
+
 **Actualisation — lot 3C.2 / issue [#21](https://github.com/Zoom225/Gestion-covoiturage/issues/21) :** DEC-COMPTES-005 livre le service interne de preuves d'invitation (32 octets, SHA-256, durée configurable, révocation/renouvellement et consommation atomique). Aucun endpoint, e-mail, mot de passe ou compte créé. Voir [modèle, concurrence, tests et limites AA](lot-3c2-invitations.md).
 
 

@@ -1,5 +1,8 @@
 # Tests d'acceptation — comptes centralisés
 
+**Préparation du parcours complet — issue [#23](https://github.com/Zoom225/Gestion-covoiturage/issues/23) :** socle interne d'initialisation transactionnelle et outbox chiffrée en préparation. Les nouveaux endpoints, créations administratives et bootstrap ne sont pas livrés : droits LOCAL (P05/P07), activités initiales (P09) et politique minimale du mot de passe (P08) attendent un arbitrage. Voir [état réel, sécurité et limites](parcours-invitations-preparation.md).
+
+
 **Actualisation — lot 3C.2 / issue [#21](https://github.com/Zoom225/Gestion-covoiturage/issues/21) :** DEC-COMPTES-005 livre le service interne de preuves d'invitation (32 octets, SHA-256, durée configurable, révocation/renouvellement et consommation atomique). Aucun endpoint, e-mail, mot de passe ou compte créé. Voir [modèle, concurrence, tests et limites AA](lot-3c2-invitations.md).
 
 
@@ -201,3 +204,22 @@ ni workflow complet d'invitation n'est annoncé livré par ces scénarios.
 Les 121 tests antérieurs sont conservés. Résultats réellement exécutés et contributions AA partielles
 dans le [dossier du lot 3C.2](lot-3c2-invitations.md). SMTP, politique de mot de passe, vérification
 d'e-mail et acceptation utilisateur restent des lots futurs.
+
+## Préparation issue #23 — socle interne et livraison chiffrée
+
+Ces scénarios ne valident pas des endpoints non implémentés.
+
+| Scénario | Given / When | Then / preuve |
+|---|---|---|
+| AC-PREP01 | Cinq profils INVITE actifs, preuve valide ; acceptation interne | BCrypt et INITIALISE dans le même commit, IDs/matricule conservés, login/me JWT utilisables : atomicAcceptanceInitializesBcryptAndKeepsIdLoginAndNormalJwt |
+| AC-PREP02 | Compte ou Client désactivé ; acceptation | Refus sans réactivation ni consommation : acceptanceNeverReactivatesDisabledAccountsOrClientsAndLeavesProofUsable |
+| AC-PREP03 | Deux acceptations concurrentes ou rollback après acceptation | Une initialisation ; après rollback preuve réutilisable : concurrentAcceptanceHasOnePasswordInitialization ; acceptanceAndPasswordInitializationRollbackTogether |
+| AC-PREP04 | Preuve et outbox dans une transaction puis échec | Aucune preuve ou ligne fantôme : failedCreationRollsBackBothProofAndEncryptedOutbox |
+| AC-PREP05 | Deux workers ou fournisseur SMTP en échec | Une livraison par commit ; reprise sans message externe en base/log : concurrentDispatchesDoNotSendTheSameCommittedMessageTwice ; unsafeSmtpFailureIsRetriedWithoutPersistingOrLoggingItsMessage |
+| AC-PREP06 | Preuve obsolète ou contenu altéré | Annulation avec retrait du ciphertext, ou reprise sans envoi : obsoleteInvitationsAreCancelledAndTheirCiphertextIsRemoved ; modifiedCiphertextNeverReachesTheTransport |
+| AC-PREP07 | AES-GCM avec AAD altérée ou mauvaise clé | Échec générique ; aucune clé de secours : InvitationPayloadCipherTests |
+| AC-PREP08 | Configuration SMTP/URL dangereuse, envoi simulé | TLS et identité serveur, fragment, pas de fuite d'exception : SmtpInvitationTransportTests |
+| AC-PREP09 | Écritures SQL incohérentes et migration V6→V7 | Contraintes et conservation des comptes : outboxConstraintsRejectInconsistentRows ; v6ToV7PreservesExistingAccountsAndDoesNotQueueEmails |
+
+D1/D2/D3 restent nécessaires avant les tests HTTP de création/acceptation.
+Les tests internes ne sont pas présentés comme une validation de ces permissions.

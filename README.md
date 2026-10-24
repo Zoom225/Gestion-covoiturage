@@ -418,3 +418,12 @@ révocation, renouvellement et consommation atomique PostgreSQL. Aucun endpoint,
 INVITATION_TTL propose PT24H sous dev seul ; hors dev, la durée doit être fournie avant émission.
 Le futur parcours devra consommer la preuve et établir BCrypt dans la même transaction.
 Aucune V6 appliquée à la base locale partagée ; les tests utilisent Testcontainers.
+
+## Préparation du parcours complet des comptes — issue #23
+
+Le [dossier de préparation](docs/gestion-comptes/parcours-invitations-preparation.md) distingue
+le socle interne réellement implémenté (acceptation atomique BCrypt et outbox AES-GCM) des
+endpoints de création/acceptation, du bootstrap et d'Angular, encore non livrés.
+Les arbitrages P05/P07/P08/P09 restent ouverts ; aucune permission n'est inventée.
+V7 concerne seulement l'outbox et n'est pas appliquée à la base partagée.
+Le worker SMTP reste désactivé par défaut ; aucun envoi réel n'est effectué par les tests.
