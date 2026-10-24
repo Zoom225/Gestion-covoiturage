@@ -1,5 +1,8 @@
 # Tests d'acceptation — comptes centralisés
 
+**État courant — lot 2 / #11 :** POST login accepte l'e-mail ADMIN ou le matricule CLIENT sans distinction de casse ; GET me conserve les droits issus de PostgreSQL. V4 impose stockage canonique et cohérence Client/Compte sans réécrire les anciens comptes. Les formulations antérieures décrivent l'historique. Voir [contrat livré et tests AC-AUTH](lot-2-authentification.md).
+
+
 **Actualisation lot 1 / DEC-COMPTES-003 :** la cible est e-mail ADMIN et matricule CLIENT ; les descriptions antérieures d'un login client indépendant sont historiques. Ce lot livre uniquement les séquences et l'historique, sans changer login/me ou les permissions. Les tests automatisés AC-NUM01–AC-NUM12 sont décrits dans le [dossier du lot](lot-1-numerotation.md) ; ils sont distincts des scénarios documentaires ci-dessous.
 
 
@@ -29,7 +32,7 @@ Les résultats HTTP nouveaux sont ceux des contrats proposés. Les Pxx sont déf
 
 | ID | Given (Étant donné) | When (Quand) | Then (Alors) | Référence / dépendance |
 |---|---|---|---|---|
-| AC01 | Un visiteur avec identifiant disponible, e-mail valide et mot de passe conforme | Il soumet le DTO public autorisé | 201 proposé ; exactement un Client OCCASIONNEL et un Compte CLIENT associés ; numéro O généré ; BCrypt en base ; aucun accès avant preuve e-mail et aucun JWT de connexion | DEC/A1/A3/A7 ; RM04/RM11/RM58 ; P01–P04/P08/P09/P11 avant implémentation |
+| AC01 | Un visiteur avec e-mail de contact valide et mot de passe conforme, sans login client libre | Il soumet le DTO public autorisé | 201 proposé ; exactement un Client OCCASIONNEL et un Compte CLIENT associés ; numéro O généré ; BCrypt en base ; aucun accès avant preuve e-mail et aucun JWT de connexion | DEC/A1/A3/A7 ; RM04/RM11/RM58 ; P01–P04/P08/P09/P11 avant implémentation |
 | AC02 | Un visiteur prépare une inscription | Il ajoute categorie VIP puis LOCAL | 400 selon le contrat strict proposé ; aucun objet persisté ; jamais la catégorie demandée ; l'omission de categorie ne change pas l'imposition OCCASIONNEL | DEC/A3 ; RM02/RM04 |
 | AC03 | Un visiteur non authentifié | a) Il soumet POST /api/auth/register avec role ADMIN, perimetreAdmin GLOBAL ou un profil administratif imbriqué ; b) il appelle directement une API administrative | a) 400 proposé pour le payload d'inscription contenant des champs interdits ; b) 401 pour l'accès anonyme à l'API administrative ; aucune création ni attribution de privilège dans les deux cas | DEC/A3/A5 ; RM01/RM02 ; cohérent avec AC17 |
 | AC04 | L'inscription publique ne possède pas encore de règle de zone manuelle | Une requête ajoute zoneClientId, zoneAdminId, clientId, numero ou actif | Rejet 400 proposé sans modification ; aucune zone ou activation choisie par l'appelant ; aucune attribution automatique de zone | A1/A3/A6 ; P03 pour un futur choix client |

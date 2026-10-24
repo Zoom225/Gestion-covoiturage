@@ -6,6 +6,8 @@ Statut : décisions fonctionnelles validées par le responsable du projet ; prop
 
 Navigation : [permissions](matrice-permissions.md), [contrats REST](contrats-api.md), [acceptation](tests-acceptation.md).
 
+**État courant — lot 2 / issue [#11](https://github.com/Zoom225/Gestion-covoiturage/issues/11) :** login/me appliquent DEC-COMPTES-003, avec recherche sans casse, stockage canonique et V4 sans conversion automatique. Les constats d'authentification exacte des lots précédents ci-dessous sont historiques. Voir [preuve, migration et limites](lot-2-authentification.md).
+
 ## 1. Références
 
 - Énoncé « Gestion d'un réseau de covoiturage multi-zones », fichier externe ../Enonce_CarShare_Network.docx.
@@ -21,15 +23,15 @@ L'énoncé définit catégories, préfixes, périmètres, authentification et mo
 
 | Élément inspecté | Fonctionnement constaté | Limite actuelle |
 |---|---|---|
-| [Compte](../../src/main/java/com/plateforme/covoiturage/entity/Compte.java) | Identifiant unique, hash BCrypt, actif, rôle CLIENT/ADMIN ; client exclusif ou périmètre administratif | Aucun e-mail, invitation ou historique |
-| [Client](../../src/main/java/com/plateforme/covoiturage/entity/Client.java) | Numéro unique, catégorie, actif, zone facultative sauf LOCAL | Aucun générateur de numéro métier |
+| [Compte](../../src/main/java/com/plateforme/covoiturage/entity/Compte.java) | Identifiant unique, hash BCrypt, actif, rôle CLIENT/ADMIN ; client exclusif ou périmètre administratif | ADMIN : e-mail porté par identifiant ; invitation non livrée |
+| [Client](../../src/main/java/com/plateforme/covoiturage/entity/Client.java) | Numéro unique, catégorie, actif, zone facultative sauf LOCAL | Générateur V/C/O livré au lot 1 ; API de création/transitions non livrées |
 | [Zone](../../src/main/java/com/plateforme/covoiturage/entity/Zone.java) | Identité technique et nom | Pas d'état ni de code métier ; CRUD non livré |
 | Enums existants | RoleTechnique CLIENT/ADMIN ; PerimetreAdmin GLOBAL/LOCAL ; CategorieClient VIP/LOCAL/OCCASIONNEL | Ne pas créer cinq rôles ou tables d'utilisateurs |
-| [CompteRepository](../../src/main/java/com/plateforme/covoiturage/repository/CompteRepository.java) | Chargement du client et des zones avec le compte | findByIdentifiant utilise une égalité sensible à la casse |
+| [CompteRepository](../../src/main/java/com/plateforme/covoiturage/repository/CompteRepository.java) | Chargement du client et des zones avec le compte | Lot 2 : findByIdentifiantIgnoringCase utilise lower comme l'index unique |
 | [AuthService](../../src/main/java/com/plateforme/covoiturage/service/AuthService.java) | Login BCrypt, erreur générique, refus au-delà de 72 octets UTF-8 ; contrôle Compte.actif et Client.actif | Pas d'inscription ou de gestion administrative |
 | [TokenService](../../src/main/java/com/plateforme/covoiturage/service/TokenService.java) | JWT HS256 : sujet = id Compte ; émetteur, audience, dates, identifiant du jeton | Pas de refresh token ni révocation individuelle |
 | [AuthController](../../src/main/java/com/plateforme/covoiturage/controller/AuthController.java) | POST login et GET me ; réponses no-store | Deux opérations d'authentification seulement |
-| [ProfileResponse](../../src/main/java/com/plateforme/covoiturage/dto/response/ProfileResponse.java) | Rôle, catégorie, périmètre et zones issus de PostgreSQL | Sans numéro client ni états détaillés |
+| [ProfileResponse](../../src/main/java/com/plateforme/covoiturage/dto/response/ProfileResponse.java) | Rôle, catégorie, périmètre et zones issus de PostgreSQL | identifiant contient le matricule CLIENT ; états détaillés non exposés |
 | [SecurityConfiguration](../../src/main/java/com/plateforme/covoiturage/security/SecurityConfiguration.java) | Stateless ; login public ; me authentifié ; préfixe admin réservé à ADMIN ; reste refusé | Inscription non autorisée et non implémentée |
 | [AdminAuthorization](../../src/main/java/com/plateforme/covoiturage/security/AdminAuthorization.java) | GLOBAL ou LOCAL de la zone réelle de la ressource | Refuse resourceZoneId null même pour GLOBAL ; insuffisant pour les comptes sans zone |
 | [Gestion d'erreurs](../../src/main/java/com/plateforme/covoiturage/exception/GlobalExceptionHandler.java) | Réponses contrôlées 400/401/403 | Cas métier 404/409 à ajouter ultérieurement |
@@ -221,7 +223,7 @@ Ces recommandations ne sont pas des permissions supplémentaires.
 | Réf. | Ce que les sources fixent / ce qui manque | Recommandation à valider | Impacts backend / PostgreSQL / Angular | Tests |
 |---|---|---|---|---|
 | P01 | Trois séquences indépendantes et nouveau matricule lors des futures transitions validés ; maximum métier et effets détaillés des transitions ouverts | Séquences par catégorie, historique unique, id Client stable et format extensible | Générateur / reprise et réservation des anciens numéros / lecture seule | AC07–AC09/AC20, limites maximales après choix |
-| P02 | Login insensible à la casse validé ; Unicode, espaces, recherche partielle, modification du login non définis | Affichage original, clé normalisée cohérente après audit | Normalisation partagée / détecter collisions avant migration / formulaire et recherche | AC06/AC29, collisions selon normalisation retenue |
+| P02 | Lot 2 : comparaison PostgreSQL lower, e-mail minuscule, matricule majuscule, sans trim et limite existante 100 caractères ; modification libre et recherche partielle non livrées | Garder la même canonisation pour toute future création et auditer avant reprise des anciens comptes | V4 sans réécriture / index fonctionnel et FK différée / champ commun | AC-AUTH01–AC-AUTH12 du dossier lot 2 ; AC06/AC29 historiques |
 | P03 | E-mail public obligatoire ; pas de zone automatique ; autres champs, unicité e-mail et zone manuelle non définis | DTO minimal identifiant/e-mail/mot de passe ; zone provisoirement exclue | Validation / coordonnées et éventuels index / formulaire minimal | AC01/AC04/AC05 |
 | P04 | V2 impose au plus un Compte par Client ; nombre de comptes par personne non défini | Conserver relation existante ; définir la notion de personne avant assouplissement | Politique anti-doublon / UNIQUE client_id conservé / conflits explicites | AC06/AC29 et cas multi-comptes futurs |
 | P05 | VIP GLOBAL, LOCAL GLOBAL ou LOCAL habilité ; conditions VIP, habilitation, autres transitions et réservations futures ouvertes | Aucune condition commerciale inventée ; matrice des transitions et analyse des réservations | Politique transactionnelle / audit et concurrence / motif et actions | AC18–AC20 et effets futurs à spécifier |

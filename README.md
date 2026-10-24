@@ -375,3 +375,7 @@ après sa publication autorisée.
 ## Lot 1 — numérotation des clients
 
 La migration additive V3 et le générateur transactionnel V/C/O sont décrits dans le [dossier du lot](docs/gestion-comptes/lot-1-numerotation.md). V1/V2, les anciens logins, JWT et BCrypt sont conservés. Les passages précédents décrivent les lots antérieurs ; la nouvelle connexion e-mail ADMIN / matricule CLIENT reste à réaliser. Aucun compte de démonstration ni amorçage au démarrage.
+
+## Lot 2 — connexion e-mail administrateur et matricule client
+
+La [connexion DEC-COMPTES-003](docs/gestion-comptes/lot-2-authentification.md), issue #11, conserve login/me, BCrypt et JWT. V4 garantit l'unicité sans casse et la cohérence du matricule, sans convertir les anciens comptes. Les passages précédents décrivent les lots antérieurs. Aucun compte de démonstration ni migration de la base locale dans cette validation.

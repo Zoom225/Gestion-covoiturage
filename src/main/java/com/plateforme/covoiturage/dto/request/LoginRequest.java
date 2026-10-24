@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record LoginRequest(
-        @Schema(description = "Identifiant technique exact du compte préprovisionné")
+        @Schema(description = "E-mail ADMIN ou matricule CLIENT ; comparaison insensible à la casse, maximum 100 caractères")
         @NotBlank @Size(max = 100) String identifiant,
         @Schema(description = "Mot de passe du compte, limité à 72 octets UTF-8", format = "password",
                 accessMode = Schema.AccessMode.WRITE_ONLY)

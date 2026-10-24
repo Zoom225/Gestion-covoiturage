@@ -28,7 +28,7 @@ public class AuthController {
     private final AuthService auth;
 
     @PostMapping("/login")
-    @Operation(summary = "Se connecter", description = "Vérifie les identifiants et l'état du compte puis délivre un JWT Bearer.")
+    @Operation(summary = "Se connecter", description = "Connexion ADMIN par e-mail ou CLIENT par matricule, sans distinction de casse. Le rôle et l'état du compte sont lus en base avant émission du JWT Bearer.")
     @SecurityRequirements
     @ApiResponse(responseCode = "200", description = "Jeton délivré")
     @ApiResponse(responseCode = "400", description = "Données ou JSON invalides",
