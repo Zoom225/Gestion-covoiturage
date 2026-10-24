@@ -427,3 +427,7 @@ endpoints de création/acceptation, du bootstrap et d'Angular, encore non livré
 Les arbitrages P05/P07/P08/P09 restent ouverts ; aucune permission n'est inventée.
 V7 concerne seulement l'outbox et n'est pas appliquée à la base partagée.
 Le worker SMTP reste désactivé par défaut ; aucun envoi réel n'est effectué par les tests.
+
+## Création et activation des comptes — PR #24
+
+DEC-COMPTES-006 valide P05/P07/P08/P09 pour les créations administratives et mots de passe par invitation. Les quatre nouveaux POST, le renvoi sécurisé, V8 additive et le bootstrap opérateur sont décrits dans [le dossier de réalisation](docs/gestion-comptes/parcours-invitations-preparation.md). Les instantanés des lots précédents sont historiques. Aucun compte créé au démarrage, aucune migration exécutée sur la base partagée pendant les tests ; SMTP simulé et PostgreSQL Testcontainers.

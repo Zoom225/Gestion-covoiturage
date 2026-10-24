@@ -35,6 +35,19 @@ import org.springframework.web.bind.annotation.*;
 public class CompteController {
     private final CompteService comptes;
 
+    @PostMapping("/{id}/invitations")
+    @Operation(summary="Renouveler une invitation",
+            description="Destinataire enregistré uniquement. Révoque la preuve précédente et remplace son message en attente. GLOBAL réseau ; LOCAL seulement clients LOCAL de sa zone. Aucun jeton retourné.")
+    @ApiResponse(responseCode="202",description="Invitation mise en file, sans garantie de livraison immédiate")
+    @ApiResponse(responseCode="404",description="Ressource absente ou invisible", content=@Content(schema=@Schema(implementation=ApiErrorResponse.class)))
+    @ApiResponse(responseCode="409",description="Compte initialisé, inactif, client inactif ou contact absent", content=@Content(schema=@Schema(implementation=ApiErrorResponse.class)))
+    @ApiResponse(responseCode="503",description="Configuration de livraison indisponible", content=@Content(schema=@Schema(implementation=ApiErrorResponse.class)))
+    public ResponseEntity<com.plateforme.covoiturage.dto.response.InvitationStatusResponse> renew(
+            @Parameter(hidden=true) Authentication actor, @Positive @PathVariable Long id, @RequestBody(required=false) java.util.Map<String,Object> body) {
+        if (body != null && !body.isEmpty()) throw new com.plateforme.covoiturage.exception.InvalidAccountRequestException();
+        return ResponseEntity.accepted().cacheControl(CacheControl.noStore()).body(comptes.renewInvitation(actor,id));
+    }
+
     @GetMapping
     @Operation(summary = "Consulter les comptes",
             description = "GLOBAL : réseau ; LOCAL : clients de sa zone. Pagination indexée à 0, taille 20 par défaut (1 à 100), ordre compteId croissant. Recherche exacte sans casse et filtres par intersection.")

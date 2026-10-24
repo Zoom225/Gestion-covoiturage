@@ -20,6 +20,7 @@ import org.springframework.web.filter.CorsFilter;
 import java.util.Arrays;
 import java.util.List;
 
+@org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication(type = org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type.SERVLET)
 @Configuration(proxyBeanMethods = false)
 @EnableMethodSecurity
 public class SecurityConfiguration {
@@ -43,7 +44,7 @@ public class SecurityConfiguration {
                         auth.requestMatchers(HttpMethod.GET, "/swagger-ui/**", "/swagger-ui.html",
                                 "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll();
                     }
-                    auth.requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                    auth.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/invitations/accept").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                             .requestMatchers("/api/admin/**").hasRole("ADMIN")
                             .anyRequest().denyAll();

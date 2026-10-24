@@ -63,7 +63,7 @@ public class InvitationService {
 
     /**
      * Consomme uniquement la preuve. Le futur parcours devra initialiser le mot de passe
-     * dans la même transaction englobante ; aucun endpoint d'acceptation n'existe ici.
+     * dans la même transaction englobante : AuthService porte ce parcours et ses contrôles.
      */
     public Long consommer(String jeton) {
         String empreinte = empreinte(jeton);

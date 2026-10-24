@@ -66,10 +66,10 @@ public class AuthService {
     }
 
 
-    /** Socle transactionnel ; la politique minimale du futur DTO public reste à valider. */
+    /** Consommation et BCrypt atomiques ; politique de mot de passe DEC-COMPTES-006. */
     @Transactional
     public void accepterInvitation(String jeton, String password) {
-        if (password == null || password.isBlank()
+        if (password == null || password.isBlank() || password.codePointCount(0, password.length()) < 15
                 || password.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new com.plateforme.covoiturage.exception.InvalidAccountRequestException();
         }

@@ -13,6 +13,13 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.Optional;
 
 public interface CompteRepository extends JpaRepository<Compte, Long>, JpaSpecificationExecutor<Compte> {
+    // Commun aux créations d'administrateurs et à l'amorçage, conservé jusqu'au commit.
+    @Query(value = "select 1 from pg_advisory_xact_lock(2423001)", nativeQuery = true)
+    Integer verrouillerAdministrationGlobale();
+
+    boolean existsByRoleAndPerimetreAdmin(com.plateforme.covoiturage.enums.RoleTechnique role,
+                                          com.plateforme.covoiturage.enums.PerimetreAdmin perimetre);
+
     @EntityGraph(attributePaths = {"client", "client.zone", "zoneAdmin"})
     // Use the same PostgreSQL lower() expression as the unique index in V4.
     @Query("select compte from Compte compte where lower(compte.identifiant) = lower(?1)")

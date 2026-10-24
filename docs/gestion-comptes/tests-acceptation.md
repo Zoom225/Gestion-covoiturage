@@ -1,6 +1,6 @@
 # Tests d'acceptation — comptes centralisés
 
-**Préparation du parcours complet — issue [#23](https://github.com/Zoom225/Gestion-covoiturage/issues/23) :** socle interne d'initialisation transactionnelle et outbox chiffrée en préparation. Les nouveaux endpoints, créations administratives et bootstrap ne sont pas livrés : droits LOCAL (P05/P07), activités initiales (P09) et politique minimale du mot de passe (P08) attendent un arbitrage. Voir [état réel, sécurité et limites](parcours-invitations-preparation.md).
+**État courant — issue [#23](https://github.com/Zoom225/Gestion-covoiturage/issues/23), PR [#24](https://github.com/Zoom225/Gestion-covoiturage/pull/24) :** DEC-COMPTES-006 valide les créations GLOBAL/LOCAL, les activités initiales et la politique de mot de passe. Les quatre POST de création/renvoi/acceptation et le bootstrap opérateur sont implémentés. V8 additive ; V1–V7 conservées. Voir [contrats, sécurité, modèle et preuves](parcours-invitations-preparation.md). Les instantanés des lots antérieurs ci-dessous restent historiques.
 
 
 **Actualisation — lot 3C.2 / issue [#21](https://github.com/Zoom225/Gestion-covoiturage/issues/21) :** DEC-COMPTES-005 livre le service interne de preuves d'invitation (32 octets, SHA-256, durée configurable, révocation/renouvellement et consommation atomique). Aucun endpoint, e-mail, mot de passe ou compte créé. Voir [modèle, concurrence, tests et limites AA](lot-3c2-invitations.md).
@@ -20,7 +20,7 @@
 [Décisions](decisions.md) · [Permissions](matrice-permissions.md) · [Contrats](contrats-api.md).
 Issue [#7](https://github.com/Zoom225/Gestion-covoiturage/issues/7), 21 octobre 2026.
 
-**Les 38 scénarios AC01–AC38 restent un référentiel documentaire de parcours partiellement futurs ; ils ne constituent pas 38 tests exécutés.** Depuis le lot 3B, AC-CONS01–AC-CONS08 correspondent à des tests de consultation réellement exécutables. Les inscriptions, protocoles d'invitation, créations et mutations restent non implémentés ; seul le socle INVITE/INITIALISE est ajouté au lot 3C.1 ; leurs attentes ouvertes ne sont pas inventées.
+**Les 38 scénarios AC01–AC38 restent un référentiel documentaire de parcours partiellement futurs ; ils ne constituent pas 38 tests exécutés.** Depuis le lot 3B, AC-CONS01–AC-CONS08 correspondent à des tests de consultation réellement exécutables. Création administrative, renvoi et acceptation sont désormais implémentés avec DEC-COMPTES-006 et les preuves HTTP en fin de document. Inscription publique, transitions de catégorie et modifications de statut restent futures.
 
 **Actualisation documentaire — lot 3A / issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13), 24 octobre 2026 :** base origin/master 39a7b6b (PR #10 et #12 fusionnées). Aucun endpoint administratif livré par ce lot. Le matricule CLIENT est le login généré ; l'e-mail de connexion ADMIN est distinct du contact CLIENT. Les droits de lecture confirmés et les modalités encore ouvertes sont séparés dans les [contrats de consultation](contrats-api.md#5-consultation-administrative--implémentée-lot-3b).
 
@@ -205,7 +205,7 @@ Les 121 tests antérieurs sont conservés. Résultats réellement exécutés et 
 dans le [dossier du lot 3C.2](lot-3c2-invitations.md). SMTP, politique de mot de passe, vérification
 d'e-mail et acceptation utilisateur restent des lots futurs.
 
-## Préparation issue #23 — socle interne et livraison chiffrée
+## Historique de la préparation issue #23 — socle interne et livraison chiffrée
 
 Ces scénarios ne valident pas des endpoints non implémentés.
 
@@ -221,5 +221,37 @@ Ces scénarios ne valident pas des endpoints non implémentés.
 | AC-PREP08 | Configuration SMTP/URL dangereuse, envoi simulé | TLS et identité serveur, fragment, pas de fuite d'exception : SmtpInvitationTransportTests |
 | AC-PREP09 | Écritures SQL incohérentes et migration V6→V7 | Contraintes et conservation des comptes : outboxConstraintsRejectInconsistentRows ; v6ToV7PreservesExistingAccountsAndDoesNotQueueEmails |
 
-D1/D2/D3 restent nécessaires avant les tests HTTP de création/acceptation.
+À cette étape historique, D1/D2/D3 bloquaient les tests HTTP ; DEC-COMPTES-006 les a résolus. Les preuves de réalisation figurent ci-dessous.
 Les tests internes ne sont pas présentés comme une validation de ces permissions.
+
+## Parcours REST complet — DEC-COMPTES-006 / issue #23
+
+Les 224 tests précédents restent conservés. Les classes AccountWorkflowHttpIntegrationTests
+(69 cas) et BootstrapContextIntegrationTests (1 cas) ont passé le lancement ciblé : 70 succès,
+0 échec, 0 erreur, 0 ignoré. Résultat complet et CI consignés dans le
+[dossier de réalisation](parcours-invitations-preparation.md#preuves-de-validation).
+
+| Scénario Given / When / Then | Preuve automatisée |
+|---|---|
+| GLOBAL demande les trois catégories → 201, matricule généré, activités vraies, INVITE sans accès | globalCreatesEveryClientCategoryAtomically |
+| LOCAL demande LOCAL dans sa zone → 201 ; VIP/OCCASIONNEL/hors zone → 403 | localCreatesOnlyLocalInOwnZone, localCannotCreateOtherCategoriesEvenInOwnZone, localCannotCreateOutsideItsZoneWithoutDisclosingExistence |
+| GLOBAL crée GLOBAL/LOCAL → 201 ; LOCAL tente l'un des deux → 403 | globalCreatesAdministratorsWithCanonicalEmail, localCannotCreateAnyAdministrator |
+| Anonyme/CLIENT appelle chaque route admin → 401/403 | administrativeEndpointsRequireAuthenticationAndAdminRole |
+| DTO incomplet, zone invalide ou champs de sécurité ajoutés → 400/404, aucune écriture partielle | invalidClientRequestsAreRejectedWithoutPartialWrites, invalidAdministratorShapesAreRejected |
+| E-mails ne différant que par casse, y compris en concurrence → un succès, un 409 générique | duplicateAdministratorEmailIsCaseInsensitiveAndGeneric, concurrentDuplicateCreationIsOne201AndOne409 |
+| Échec après création et preuve → rollback Client/Compte/réservation/preuve/outbox | creationRollsBackClientNumberAccountProofAndOutboxOnFailure |
+| Cinq profils invités acceptent puis login/me → BCrypt, JWT et IDs/matricules conservés | acceptanceEnablesNormalLoginForAllFiveProfiles |
+| Preuve expirée/révoquée/utilisée/invalide → même 400 sans secret | unavailableInvitationsReturnSameGeneric400 |
+| Minimum 15 points de code / maximum 72 octets ; UTF-8, emoji et absence de composition | acceptanceValidatesCodePointsBytesAndForbiddenFields, passwordBoundariesAreAcceptedWithoutCompositionRequirement |
+| Compte ou Client désactivé → refus, preuve non consommée, aucune réactivation | acceptanceNeverReactivatesDisabledAccountOrClient |
+| Renvoi autorisé → 202, ancienne preuve révoquée, ancien ciphertext supprimé | renewRevokesPreviousTokenAndUsesOnlyStoredRecipient, renewalCancelsPendingCiphertextAndKeepsNumber |
+| Renvoi tente de changer le destinataire → 400 ; hors zone/absent → même 404 ; catégorie interdite → 403 | renewalCannotRedirectDeliveryOrModifySecurityFields, renewalIsInvisibleOutsideScopeAndForbiddenForVipInScope |
+| Renvoi sur compte initialisé/inactif/client inactif/contact absent → 409 sans nouvelle preuve | incompatibleRenewalIs409AndDoesNotIssueAnotherToken |
+| Deux POST accept simultanés → exactement un 204 et un 400 | concurrentAcceptanceThroughHttpSucceedsExactlyOnce |
+| Ancien compte avec password court → login inchangé | acceptedPasswordMinimumIsNotRetroactiveForExistingAccounts |
+| Bootstrap concurrent → un GLOBAL INVITE ; tout GLOBAL préexistant bloque le second amorçage | bootstrapIsSerializedAndNeverCreatesASecondGlobal, bootstrapRefusesEvenInactiveOrInvitedExistingGlobal |
+| Migration V7→V8 → ID/hash/activités conservés, contact NULL sans backfill | v7ToV8PreservesExistingIdentityHashActivitiesAndRelations |
+| Swagger expose les quatre POST ; contexte opérateur sans HTTP et sans création automatique | swaggerDescribesAllFourEndpointsAndNoPublicAdministrativeAccess, operatorContextStartsWithoutHttpOrAutomaticAccountCreation |
+
+Ces regroupements ne renumérotent pas les 38 AC historiques. Les conditions D1/D2/D3 de la préparation
+sont désormais résolues par DEC-COMPTES-006. Les autres transitions, statuts et anti-abus restent hors lot.

@@ -80,6 +80,12 @@ public class GlobalExceptionHandler {
                 "Données de compte invalides", request.getRequestURI()));
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    ResponseEntity<ApiErrorResponse> integrity(HttpServletRequest request) {
+        return ResponseEntity.status(409).body(ApiErrorResponse.of(409, "ACCOUNT_CONFLICT",
+                "Opération incompatible avec les données existantes", request.getRequestURI()));
+    }
+
     @ExceptionHandler(DeliveryUnavailableException.class)
     ResponseEntity<ApiErrorResponse> deliveryUnavailable(HttpServletRequest request) {
         return ResponseEntity.status(503).body(ApiErrorResponse.of(503, "DELIVERY_UNAVAILABLE",
