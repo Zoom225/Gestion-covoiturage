@@ -25,6 +25,42 @@ public class ReferentielService {
     private final IndisponibiliteRepository indisponibilites;
     private final AdminAuthorization authorization;
     private final ReferentielMapper mapper;
+    private final ClientRepository clients;
+    private final ZoneAccessRepository grants;
+
+    @Transactional
+    public ZoneResponse createZone(Authentication actor,com.plateforme.covoiturage.dto.request.ZoneWriteRequest request){
+        authorization.requireGlobal(actor); validateTimezone(request.fuseauHoraire());
+        var zone=new Zone(request.nom().strip());
+        zone.configure(request.nom().strip(),request.fuseauHoraire(),request.ouverteOccasionnels());
+        return mapper.zone(zones.save(zone));
+    }
+    @Transactional
+    public ZoneResponse updateZone(Authentication actor,long id,com.plateforme.covoiturage.dto.request.ZoneWriteRequest request){
+        authorization.requireGlobal(actor);validateTimezone(request.fuseauHoraire());
+        var zone=zones.lockById(id).orElseThrow(ResourceNotFoundException::new);
+        zone.configure(request.nom().strip(),request.fuseauHoraire(),request.ouverteOccasionnels());
+        return mapper.zone(zone);
+    }
+    @Transactional
+    public ZoneResponse zoneStatus(Authentication actor,long id,boolean active){
+        authorization.requireGlobal(actor);
+        var zone=zones.lockById(id).orElseThrow(ResourceNotFoundException::new);
+        zone.setActif(active);return mapper.zone(zone);
+    }
+    @Transactional
+    public void vipAccess(Authentication actor,long zoneId,long clientId,boolean allow){
+        authorization.requireGlobal(actor);
+        zones.lockById(zoneId).orElseThrow(ResourceNotFoundException::new);
+        var client=clients.findById(clientId).orElseThrow(ResourceNotFoundException::new);
+        if(client.getCategorie()!=com.plateforme.covoiturage.enums.CategorieClient.VIP)
+            throw new com.plateforme.covoiturage.exception.BusinessRuleException("VIP_REQUIRED");
+        if(allow)grants.grant(clientId,zoneId);else grants.revoke(clientId,zoneId);
+    }
+    private void validateTimezone(String timezone){
+        if(!java.time.ZoneId.getAvailableZoneIds().contains(timezone))
+            throw new com.plateforme.covoiturage.exception.InvalidAccountRequestException();
+    }
 
     public ReferencePageResponse<ZoneResponse> zones(Authentication actor,ReferencePageRequest page) {
         Long scope=authorization.requireZoneScope(actor);

@@ -28,6 +28,40 @@ import org.springframework.web.bind.annotation.*;
 public class ReferentielController {
     private final ReferentielService service;
 
+    @PostMapping("/zones")
+    @Operation(summary="Creer une zone (GLOBAL)")
+    @ApiResponse(responseCode="201",description="Zone creee")
+    public ResponseEntity<ZoneResponse> createZone(@Parameter(hidden=true) Authentication actor,
+            @Valid @RequestBody com.plateforme.covoiturage.dto.request.ZoneWriteRequest request){
+        var result=service.createZone(actor,request);
+        return ResponseEntity.created(java.net.URI.create("/api/admin/zones/"+result.zoneId()))
+            .cacheControl(CacheControl.noStore()).body(result);
+    }
+    @PutMapping("/zones/{id}")
+    @Operation(summary="Configurer une zone (GLOBAL)",description="Nom, fuseau IANA et acces OCCASIONNEL ; aucun transfert implicite.")
+    public ZoneResponse updateZone(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id,
+            @Valid @RequestBody com.plateforme.covoiturage.dto.request.ZoneWriteRequest request){
+        return service.updateZone(actor,id,request);
+    }
+    @PatchMapping("/zones/{id}/statut")
+    @Operation(summary="Activer ou desactiver une zone (GLOBAL)",description="Les relations sont conservees ; aucune suppression physique.")
+    public ZoneResponse zoneStatus(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id,
+            @Valid @RequestBody com.plateforme.covoiturage.dto.request.ZoneStatusRequest request){
+        return service.zoneStatus(actor,id,request.actif());
+    }
+    @PutMapping("/zones/{id}/clients-vip/{clientId}")
+    @Operation(summary="Autoriser une zone a un VIP (GLOBAL)")
+    public ResponseEntity<Void> grant(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id,
+            @Positive @PathVariable long clientId){
+        service.vipAccess(actor,id,clientId,true);return ResponseEntity.noContent().build();
+    }
+    @DeleteMapping("/zones/{id}/clients-vip/{clientId}")
+    @Operation(summary="Retirer une autorisation de zone VIP (GLOBAL)")
+    public ResponseEntity<Void> revoke(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id,
+            @Positive @PathVariable long clientId){
+        service.vipAccess(actor,id,clientId,false);return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/zones")
     @Operation(summary="Consulter les zones",description="Zones du réseau pour GLOBAL, zone propre pour LOCAL. Pagination 0/20/100, ordre ID croissant ; périmètre appliqué avant pagination et total.")
     @ApiResponse(responseCode="200",description="Page autorisée")

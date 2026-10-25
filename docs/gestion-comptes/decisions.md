@@ -355,6 +355,10 @@ Anomalie source : RM07 se termine dans le cahier par une phrase incomplète (« 
 
 Contribution documentaire ne signifie pas validation technique complète des acquis.
 
+## Décisions réseau complémentaires — état courant
+
+Les décisions métier D1–D5 du responsable sont désormais validées : [registre et contrats du lot 4](../lot-4-zones-vehicules/decisions-metier-d1-d5.md). Elles remplacent les propositions ouvertes antérieures concernant ces seules opérations. GLOBAL seul gère les zones et leur configuration d’accès ; LOCAL consulte sa zone. Les droits de mutation des véhicules/indisponibilités ne sont pas déduits de cette décision. DEC-COMPTES-001/002/003 et les mécanismes d’authentification restent inchangés.
+
 ## 9. Étapes futures et stratégie Git
 
 ### Plan initial — historique de l'issue #7

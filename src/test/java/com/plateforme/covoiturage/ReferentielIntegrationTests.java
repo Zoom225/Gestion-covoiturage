@@ -51,6 +51,8 @@ class ReferentielIntegrationTests {
     @Autowired TokenService tokens;
     @Autowired AuthService auth;
     @Autowired ReferentielService service;
+    @Autowired ZoneAccessPolicy access;
+    @Autowired AvailabilityService availability;
     @Autowired JdbcTemplate jdbc;
     @Autowired DataSource dataSource;
     @Autowired EntityManagerFactory emf;
@@ -79,7 +81,7 @@ class ReferentielIntegrationTests {
         awayZonePeriod=periods.saveAndFlush(Indisponibilite.pourZone(away,START,END));
         awayVehiclePeriod=periods.saveAndFlush(Indisponibilite.pourVehicule(awayVehicle,START,END));
     }
-    @AfterEach void releaseNewForeignKeysForOtherCachedTestClasses(){jdbc.update("delete from indisponibilite");}
+    @AfterEach void releaseNewForeignKeysForOtherCachedTestClasses(){jdbc.update("delete from autorisation_zone_vip");jdbc.update("delete from indisponibilite");}
 
     HttpResponse<String> get(String path,Compte actor)throws Exception{
         return bearer(path,actor==null?null:tokens.issue(actor.getId()).accessToken());
@@ -249,6 +251,85 @@ class ReferentielIntegrationTests {
                 +" and cl.zone_id=v.zone_id and c.etat_identifiants='INITIALISE' from "+schema+".compte c"
                 +" join "+schema+".client cl on cl.id=c.client_id join "+schema+".vehicule v on v.id=9001",Boolean.class,hash)).isTrue();
     }
+
+    HttpResponse<String> write(String method,String path,Compte actor,String body)throws Exception{
+        var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+path))
+            .header("Content-Type","application/json");
+        if(actor!=null)request.header("Authorization","Bearer "+tokens.issue(actor.getId()).accessToken());
+        return http.send(request.method(method,HttpRequest.BodyPublishers.ofString(body)).build(),HttpResponse.BodyHandlers.ofString());
+    }
+    String configuration(String timezone){
+        return json.writeValueAsString(Map.of("nom","Zone configuree","fuseauHoraire",timezone,"ouverteOccasionnels",true));
+    }
+    @Test void globalCreatesUpdatesAndDeactivatesWithoutDeletingReferences()throws Exception{
+        var created=write("POST",api("zones"),global,configuration("Europe/Brussels"));
+        assertThat(created.statusCode()).isEqualTo(201);safe(created.body());
+        long id=read(created).path("zoneId").asLong();
+        assertThat(read(created).path("actif").asBoolean()).isTrue();
+        assertThat(write("PUT",api("zones")+"/"+home.getId(),global,configuration("Europe/Paris")).statusCode()).isEqualTo(200);
+        var deactivated=write("PATCH",api("zones")+"/"+home.getId()+"/statut",global,"{\"actif\":false}");
+        assertThat(deactivated.statusCode()).isEqualTo(200);
+        assertThat(read(deactivated).path("actif").asBoolean()).isFalse();
+        assertThat(vehicles.findById(homeVehicle.getId())).isPresent();
+        assertThat(clients.findById(client.getClient().getId())).isPresent();
+        assertThat(zones.findById(id)).isPresent();
+    }
+    @ParameterizedTest @ValueSource(strings={"anonymous","local","client"})
+    void zoneWritesRequireGlobal(String role)throws Exception{
+        Compte actor=switch(role){case "local"->local;case "client"->client;default->null;};
+        assertThat(write("POST",api("zones"),actor,configuration("Europe/Brussels")).statusCode())
+            .isEqualTo(actor==null?401:403);
+        assertThat(write("PATCH",api("zones")+"/"+home.getId()+"/statut",actor,"{\"actif\":false}").statusCode())
+            .isEqualTo(actor==null?401:403);
+    }
+    @ParameterizedTest @ValueSource(strings={"", "Not/AZone", "UTC+99"})
+    void invalidTimezoneIs400(String timezone)throws Exception{
+        assertThat(write("POST",api("zones"),global,configuration(timezone)).statusCode()).isEqualTo(400);
+    }
+    @Test void missingZoneOnWriteIs404()throws Exception{
+        assertThat(write("PUT",api("zones")+"/"+Long.MAX_VALUE,global,configuration("Europe/Brussels")).statusCode()).isEqualTo(404);
+    }
+    @Test void explicitVipGrantsCannotBeReplacedByCategoryAlone()throws Exception{
+        var vip=clients.saveAndFlush(new Client("V990002",CategorieClient.VIP,true,null));
+        assertThat(access.permits(vip,home)).isFalse();
+        String endpoint=api("zones")+"/"+home.getId()+"/clients-vip/"+vip.getId();
+        assertThat(write("PUT",endpoint,local,"").statusCode()).isEqualTo(403);
+        assertThat(write("PUT",endpoint,global,"").statusCode()).isEqualTo(204);
+        assertThat(write("PUT",endpoint,global,"").statusCode()).isEqualTo(204);
+        assertThat(access.permits(vip,home)).isTrue();assertThat(access.permits(vip,away)).isFalse();
+        assertThat(write("DELETE",endpoint,global,"").statusCode()).isEqualTo(204);
+        assertThat(access.permits(vip,home)).isFalse();
+        assertThat(write("PUT",api("zones")+"/"+home.getId()+"/clients-vip/"+client.getClient().getId(),global,"").statusCode()).isEqualTo(409);
+    }
+    @Test void localAndOccasionalAccessFollowDatabaseConfiguration()throws Exception{
+        var person=client.getClient();
+        assertThat(access.permits(person,home)).isTrue();assertThat(access.permits(person,away)).isFalse();
+        var occasional=clients.saveAndFlush(new Client("O990003",CategorieClient.OCCASIONNEL,true,null));
+        assertThat(access.permits(occasional,home)).isFalse();
+        write("PUT",api("zones")+"/"+home.getId(),global,configuration("Europe/Brussels"));
+        var fresh=zones.findById(home.getId()).orElseThrow();
+        assertThat(access.permits(occasional,fresh)).isTrue();
+        write("PATCH",api("zones")+"/"+home.getId()+"/statut",global,"{\"actif\":false}");
+        assertThat(access.permits(person,zones.findById(home.getId()).orElseThrow())).isFalse();
+    }
+    @ParameterizedTest @ValueSource(strings={"inside","leftOverlap","rightOverlap"})
+    void zoneOrVehicleUnavailabilityBlocksOverlaps(String kind){
+        Instant start=switch(kind){case "leftOverlap"->START.minusSeconds(1800);case "rightOverlap"->END.minusSeconds(1);default->START;};
+        assertThatThrownBy(()->availability.requireAvailable(homeVehicle,start,start.plusSeconds(3600)))
+            .isInstanceOf(com.plateforme.covoiturage.exception.BusinessRuleException.class);
+    }
+    @Test void availabilityUsesHalfOpenIntervalsAndRejectsInvalidDates(){
+        availability.requireAvailable(homeVehicle,END,END.plusSeconds(3600));
+        availability.requireAvailable(homeVehicle,START.minusSeconds(3600),START);
+        assertThatThrownBy(()->availability.requireAvailable(homeVehicle,END,START))
+            .isInstanceOf(com.plateforme.covoiturage.exception.BusinessRuleException.class);
+    }
+    @Test void postgresRejectsGrantToNonVipAndPreservesZoneOnDeactivation()throws Exception{
+        assertThatThrownBy(()->jdbc.update("insert into autorisation_zone_vip(client_id,zone_id) values(?,?)",
+            client.getClient().getId(),home.getId())).isInstanceOf(DataIntegrityViolationException.class);
+        write("PATCH",api("zones")+"/"+home.getId()+"/statut",global,"{\"actif\":false}");
+        assertThat(jdbc.queryForObject("select count(*) from vehicule where zone_id=?",Integer.class,home.getId())).isEqualTo(2);
+    }
     @Test void swaggerExposesOnlyReadOperationsForNewReferences()throws Exception{
         var response=http.send(HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/v3/api-docs")).GET().build(),HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(200);
@@ -256,7 +337,11 @@ class ReferentielIntegrationTests {
         for(String resource:List.of("zones","vehicules","indisponibilites")){
             for(String path:List.of(api(resource),api(resource)+"/{id}")){
                 assertThat(paths.path(path).has("get")).isTrue();
-                for(String verb:List.of("post","put","patch","delete"))assertThat(paths.path(path).has(verb)).isFalse();
+                for(String verb:List.of("post","put","patch","delete")){
+                    boolean allowed=resource.equals("zones") && ((path.equals(api(resource))&&verb.equals("post"))
+                        || (path.endsWith("/{id}")&&verb.equals("put")));
+                    assertThat(paths.path(path).has(verb)).isEqualTo(allowed);
+                }
             }
         }
     }

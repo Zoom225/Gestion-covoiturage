@@ -119,3 +119,7 @@ Pour les tests conditionnels, voir AC18–AC25 et les références P01–P11 dan
 ## Précisions courantes DEC-COMPTES-006
 
 Renvoi d’invitation : mêmes droits que la création du profil cible, destinataire enregistré seulement, après visibilité SQL. LOCAL ne renvoie ni VIP/OCCASIONNEL ni ADMIN. INVITE actif et client actif requis ; aucune réactivation. Accepter son invitation est public avec preuve personnelle, sans JWT retourné. Les habilitations historiques d’A4 concernent les transitions encore ouvertes, pas la création LOCAL désormais validée.
+
+## Zones - decisions D1/D3 validees
+
+GLOBAL cree/configure/desactive les zones et leurs acces VIP/OCCASIONNEL. LOCAL lit uniquement sa zone ; aucun droit de mutation de zone. Les CLIENT n'accedent pas aux API administratives. Les droits de mutation des vehicules et indisponibilites restent A PRECISER. Voir le [contrat courant](../lot-4-zones-vehicules/decisions-metier-d1-d5.md).

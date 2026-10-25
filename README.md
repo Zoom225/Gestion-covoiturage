@@ -435,3 +435,8 @@ DEC-COMPTES-006 valide P05/P07/P08/P09 pour les créations administratives et mo
 ## Lot 4 — consultation des référentiels
 
 Le [socle du lot 4](docs/lot-4-zones-vehicules/consultation.md), lié à l’issue #25, ajoute six GET sécurisés pour zones, véhicules et périodes d’indisponibilité. Le périmètre GLOBAL/LOCAL est appliqué en SQL avant pagination et comptage. V9 est additive ; aucune mutation, suppression logique ou règle de trajet non validée n’est exposée. Les lots 5/6 attendent la stabilisation du modèle et des contrats.
+
+
+## Zones et acces client - lot 4
+
+Contrats courants, decisions D1-D5, limites et tests : [dossier lot 4](docs/lot-4-zones-vehicules/decisions-metier-d1-d5.md). V10 additive ; aucune migration appliquee a la base partagee. Les mutations vehicules/indisponibilites restent fermees faute de droits definis.

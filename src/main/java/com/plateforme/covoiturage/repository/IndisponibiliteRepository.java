@@ -8,6 +8,11 @@ import java.util.Optional;
 
 public interface IndisponibiliteRepository extends JpaRepository<Indisponibilite,Long>,
         JpaSpecificationExecutor<Indisponibilite> {
+    @Query("select (count(p)>0) from Indisponibilite p where (p.zone.id=:zone or p.vehicule.id=:vehicle) and p.debut<:end and p.fin>:start")
+    boolean overlaps(@org.springframework.data.repository.query.Param("zone") long zone,
+        @org.springframework.data.repository.query.Param("vehicle") long vehicle,
+        @org.springframework.data.repository.query.Param("start") java.time.Instant start,
+        @org.springframework.data.repository.query.Param("end") java.time.Instant end);
     @Override
     @EntityGraph(attributePaths={"zone","vehicule","vehicule.zone"})
     Page<Indisponibilite> findAll(Specification<Indisponibilite> specification,Pageable pageable);

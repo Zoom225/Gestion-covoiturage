@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ReferentielMapper {
-    public ZoneResponse zone(Zone zone) { return new ZoneResponse(zone.getId(),zone.getNom()); }
+    public ZoneResponse zone(Zone zone) { return new ZoneResponse(zone.getId(),zone.getNom(),zone.isActif(),zone.getFuseauHoraire(),zone.isOuverteOccasionnels()); }
     public VehiculeResponse vehicule(Vehicule vehicule) {
         return new VehiculeResponse(vehicule.getId(),vehicule.getZone().getId(),vehicule.getZone().getNom());
     }

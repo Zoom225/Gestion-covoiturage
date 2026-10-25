@@ -1,3 +1,5 @@
+> Historique du socle initial. D1-D5 sont maintenant valides : voir [decisions-metier-d1-d5.md](decisions-metier-d1-d5.md). Les limites et resultats ci-dessous decrivent le commit 586cef0 ; le contrat courant figure dans ce nouveau registre.
+
 # Lot 4 — consultation des référentiels et socle des indisponibilités
 
 Issue [#25](https://github.com/Zoom225/Gestion-covoiturage/issues/25) ;
