@@ -39,6 +39,18 @@ public class AuthController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(auth.login(request));
     }
 
+    @PostMapping("/invitations/accept")
+    @Operation(summary="Définir son premier mot de passe",
+            description="Invitation personnelle à usage unique ; au moins 15 caractères et au plus 72 octets UTF-8. Aucun JWT ni réactivation implicite.")
+    @SecurityRequirements
+    @ApiResponse(responseCode="204",description="Mot de passe initialisé ; connexion normale ensuite")
+    @ApiResponse(responseCode="400",description="Données ou invitation indisponible, invalide ou expirée",
+            content=@Content(schema=@Schema(implementation=ApiErrorResponse.class)))
+    public ResponseEntity<Void> accept(@Valid @RequestBody com.plateforme.covoiturage.dto.request.AcceptInvitationRequest request) {
+        auth.accepterInvitation(request.jeton(),request.password());
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+    }
+
     @GetMapping("/me")
     @Operation(summary = "Consulter son profil", description = "Le compte est identifié par le JWT puis relu en PostgreSQL ; aucun identifiant client n'est accepté.")
     @ApiResponse(responseCode = "200", description = "Profil du compte authentifié")

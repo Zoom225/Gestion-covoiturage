@@ -46,6 +46,11 @@ public class Compte {
     @JoinColumn(name = "zone_admin_id")
     private Zone zoneAdmin;
 
+    @Column(name = "invitation_email", length = 254)
+    private String invitationEmail;
+
+    public void definirContactInvitation(String email) { this.invitationEmail = email; }
+
     /** État d'accès commun à l'authentification et à la consultation administrative. */
     public boolean isAccesEffectif() {
         return etatIdentifiants == EtatIdentifiants.INITIALISE && actif && (client == null || client.isActif());

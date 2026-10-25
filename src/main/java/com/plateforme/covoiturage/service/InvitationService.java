@@ -42,7 +42,7 @@ public class InvitationService {
     }
 
     /** Résultat strictement interne, jamais un DTO REST ou administratif. */
-    public record InvitationEmise(@JsonIgnore String jeton, Instant expireA) {
+    public record InvitationEmise(@JsonIgnore String jeton, Instant expireA, Long invitationId) {
         @Override public String toString() {
             return "InvitationEmise[jeton=REDACTED]";
         }
@@ -63,7 +63,7 @@ public class InvitationService {
 
     /**
      * Consomme uniquement la preuve. Le futur parcours devra initialiser le mot de passe
-     * dans la même transaction englobante ; aucun endpoint d'acceptation n'existe ici.
+     * dans la même transaction englobante : AuthService porte ce parcours et ses contrôles.
      */
     public Long consommer(String jeton) {
         String empreinte = empreinte(jeton);
@@ -102,8 +102,8 @@ public class InvitationService {
         byte[] octets = new byte[32];
         random.nextBytes(octets);
         String jeton = Base64.getUrlEncoder().withoutPadding().encodeToString(octets);
-        invitations.saveAndFlush(new Invitation(compte, sha256(octets), maintenant, expiration));
-        return new InvitationEmise(jeton, expiration);
+        var invitation = invitations.saveAndFlush(new Invitation(compte, sha256(octets), maintenant, expiration));
+        return new InvitationEmise(jeton, expiration, invitation.getId());
     }
 
     private Instant maintenant() {

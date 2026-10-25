@@ -386,13 +386,17 @@ class InvitationIntegrationTests {
     }
 
     @Test
-    void noInvitationEndpointOrRawTokenSchemaIsExposed() throws Exception {
+    void invitationRoutesExposeOnlyPublicContractsWithoutInternalTokenSchemas() throws Exception {
         var response = HttpClient.newHttpClient().send(
                 HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/v3/api-docs")).GET().build(),
                 HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(200);
         var spec = json.readTree(response.body());
-        assertThat(spec.path("paths").toString()).doesNotContain("invitation");
+        assertThat(spec.path("paths").path("/api/auth/invitations/accept").has("post")).isTrue();
+        assertThat(spec.path("paths").path("/api/admin/comptes/{id}/invitations").has("post")).isTrue();
+        assertThat(spec.path("paths").has("/api/auth/invitations/emit")).isFalse();
+        assertThat(spec.path("components").path("schemas").path("AcceptInvitationRequest")
+                .path("properties").path("jeton").path("writeOnly").asBoolean()).isTrue();
         assertThat(spec.path("components").path("schemas").toString()).doesNotContain("InvitationEmise");
     }
 

@@ -1,5 +1,8 @@
 # Contrats REST — gestion centralisée des comptes
 
+**État courant — issue [#23](https://github.com/Zoom225/Gestion-covoiturage/issues/23), PR [#24](https://github.com/Zoom225/Gestion-covoiturage/pull/24) :** DEC-COMPTES-006 valide les créations GLOBAL/LOCAL, les activités initiales et la politique de mot de passe. Les quatre POST de création/renvoi/acceptation et le bootstrap opérateur sont implémentés. V8 additive ; V1–V7 conservées. Voir [contrats, sécurité, modèle et preuves](parcours-invitations-preparation.md). Les instantanés des lots antérieurs ci-dessous restent historiques.
+
+
 **Actualisation — lot 3C.2 / issue [#21](https://github.com/Zoom225/Gestion-covoiturage/issues/21) :** DEC-COMPTES-005 livre le service interne de preuves d'invitation (32 octets, SHA-256, durée configurable, révocation/renouvellement et consommation atomique). Aucun endpoint, e-mail, mot de passe ou compte créé. Voir [modèle, concurrence, tests et limites AA](lot-3c2-invitations.md).
 
 
@@ -17,7 +20,7 @@
 [Décisions](decisions.md) · [Permissions](matrice-permissions.md) · [Acceptation](tests-acceptation.md).
 Issue [#7](https://github.com/Zoom225/Gestion-covoiturage/issues/7), base 8a2a474, 21 octobre 2026.
 
-**Existants : POST /api/auth/login, GET /api/auth/me et, depuis le lot 3B, GET /api/admin/comptes et GET /api/admin/comptes/{id}.** Inscription, créations administratives et statut restent proposés, non implémentés. Les DTO de ces parcours futurs restent conceptuels ; aucun Angular livré.
+**Existants : login/me, les deux GET administratifs et les quatre POST de la section 6.** L'inscription publique et les modifications de statut restent proposées, non implémentées. Aucun Angular livré.
 
 **Actualisation documentaire — lot 3A / issue [#13](https://github.com/Zoom225/Gestion-covoiturage/issues/13), 24 octobre 2026 :** base origin/master 39a7b6b (PR #10 et #12 fusionnées). Aucun endpoint administratif livré par ce lot. Le matricule CLIENT est le login généré ; l'e-mail de connexion ADMIN est distinct du contact CLIENT. Les droits de lecture confirmés et les modalités encore ouvertes sont séparés dans les [contrats de consultation](contrats-api.md#5-consultation-administrative--implémentée-lot-3b).
 
@@ -36,11 +39,13 @@ Les créations spécialisées Client et Administrateur évitent un POST généri
 | GET /api/auth/me | EXISTANT | JWT, état INITIALISE et compte/client actifs | 200, ProfileResponse |
 | GET /api/admin/comptes | EXISTANT lot 3B | GLOBAL réseau ; LOCAL seulement CLIENT de sa zone | 200, ComptePageResponse |
 | GET /api/admin/comptes/{id} | EXISTANT lot 3B | Même périmètre que la liste ; invisible = absent | 200, CompteAdministrationResponse |
-| POST /api/admin/clients | PROPOSÉ | ADMIN habilité selon catégorie et périmètre | 201, invitation en attente |
-| POST /api/admin/administrateurs | PROPOSÉ | ADMIN GLOBAL seulement | 201, invitation en attente |
+| POST /api/admin/clients | IMPLÉMENTÉ | GLOBAL trois catégories ; LOCAL catégorie LOCAL de sa zone | 201, CompteInvitationResponse |
+| POST /api/admin/administrateurs | IMPLÉMENTÉ | ADMIN GLOBAL seulement | 201, CompteInvitationResponse |
+| POST /api/admin/comptes/{id}/invitations | IMPLÉMENTÉ | Droit de création du profil cible et visibilité SQL | 202, InvitationStatusResponse |
+| POST /api/auth/invitations/accept | IMPLÉMENTÉ | Public, preuve personnelle et mot de passe validés | 204, sans JWT |
 | PATCH /api/admin/comptes/{id}/statut | PROPOSÉ | ADMIN autorisé, droits fins P09 | 200, DTO actualisé |
 
-Les succès 201 et les enveloppes ci-dessous sont des propositions de contrat à valider. Ne pas activer un endpoint tant que ses préconditions applicables P01–P12 ne sont pas précisées ; la lecture seule ne dépend pas des parcours de création/invitation hors périmètre. Aucun privilège ne se déduit du seul fait que le chemin commence par /api/admin.
+Les succès 201/202/204 et les enveloppes de la section 6 sont implémentés ; les autres parcours explicitement proposés restent futurs. Ne pas activer un endpoint tant que ses préconditions applicables P01–P12 ne sont pas précisées ; la lecture seule ne dépend pas des parcours de création/invitation hors périmètre. Aucun privilège ne se déduit du seul fait que le chemin commence par /api/admin.
 
 Périmètre d'activation : vérification d'e-mail avant activation pour les nouveaux inscrits publics OCCASIONNEL ; invitation sécurisée avant accès pour les nouveaux comptes créés administrativement par le parcours normal. Une éventuelle vérification d'e-mail distincte de l'invitation reste P06/P11. Les comptes préexistants conservent les contrôles actuels de login/me ; aucune obligation rétroactive d'e-mail ou d'invitation n'est ajoutée sans décision et migration adaptées. Le futur jeu fictif isolé reste l'exception DEC-COMPTES-002, sans nouvel endpoint.
 
@@ -180,27 +185,57 @@ accesEffectif = INITIALISE ET Compte.actif pour ADMIN, INITIALISE ET Compte.acti
 
 Transactions de lecture seulement. Aucune migration nouvelle ni modification de V1–V4. Les filtres utilisent les colonnes existantes ; l'analyse d'éventuels index supplémentaires reste distincte et exige un besoin mesuré. Les preuves et limites AA sont dans le [dossier du lot](lot-3b-consultation.md).
 
-## 6. Création administrative — PROPOSÉE
+## 6. Création administrative — IMPLÉMENTÉE, DEC-COMPTES-006
 
 ### POST /api/admin/clients
 
-CreateClientRequest conceptuel : email de contact pour invitation, categorie, zoneClientId conditionnel ; login CLIENT fixé au matricule généré, aucun identifiant libre. L'obligation de contact pour l'invitation est une proposition technique à stabiliser avec P11 ; elle ne transforme pas l'e-mail en login.
+CreateClientRequest : email de livraison obligatoire (valide, maximum 254), categorie obligatoire,
+zoneClientId positive facultative sauf pour LOCAL. Aucun login libre, matricule, rôle, état actif ou password.
+GLOBAL crée VIP/LOCAL/OCCASIONNEL ; tout LOCAL crée LOCAL dans sa zone uniquement.
+VIP/OCCASIONNEL sans zone restent GLOBAL. Zone de création hors périmètre : 403 avant recherche ;
+zone autorisée inexistante : 404. LOCAL sans zone : 400 pour GLOBAL ; refus de périmètre pour acteur LOCAL.
 
-Le rôle CLIENT, le numéro et les états de sécurité sont imposés côté serveur ; aucun password administrativement choisi. LOCAL exige une zone existante. VIP uniquement par GLOBAL. L'attribution LOCAL est autorisée à GLOBAL ou LOCAL habilité dans sa zone selon P05 ; le droit précis de création d'un nouveau client par LOCAL reste P07 et ne se déduit pas automatiquement du droit d'attribution. Un LOCAL ne peut créer un client sans zone ; son droit sur un OCCASIONNEL zoné reste également P07.
-
-Client/Compte/invitation et audit dans une transaction. Le compte reste sans accès jusqu'au parcours d'invitation et aux validations requises ; modélisation du hash obligatoire actuel à préciser P06, sans valeur par défaut.
-
-201 proposé : DTO administratif minimal et état invitation en attente, éventuellement Location vers le détail du compte ; ni jeton d'invitation ni mot de passe. 400 données/profil/zone manquante ; 401 JWT ; 403 rôle/catégorie/périmètre ; 404 zone autorisée inexistante ; 409 unicité ou état concurrent. Anti-énumération hors zone appliquée avant divulgation de la cible.
-
-Cette création ne définit pas implicitement les transitions ultérieures de catégorie, qui requièrent P05 et une opération spécifique à concevoir.
+Numéro réservé par le générateur existant, rôle CLIENT, activités vraies, état INVITE, hash NULL.
+Client + Compte + réservation + preuve + outbox chiffrée dans une transaction.
+201 : CompteInvitationResponse {compte: CompteAdministrationResponse, invitationExpireA},
+Location /api/admin/comptes/{id}, Cache-Control no-store. Aucun contact CLIENT ni secret dans le DTO.
 
 ### POST /api/admin/administrateurs
 
-CreateAdministrateurRequest conceptuel : e-mail de connexion canonique, contact d'invitation, perimetreAdmin GLOBAL/LOCAL, zoneAdminId requise pour LOCAL et absente pour GLOBAL. role ADMIN fixé par le serveur ; aucun clientId, categorie ou mot de passe fourni par le créateur.
+CreateAdministrateurRequest : email (maximum 100) et perimetreAdmin obligatoires ;
+zoneAdminId obligatoire pour LOCAL et absente pour GLOBAL. E-mail canonique en minuscules,
+utilisé pour le login et la livraison. GLOBAL uniquement ; CLIENT et LOCAL : 403.
+Rôle ADMIN imposé, actif=true, INVITE, hash NULL. Même enveloppe 201 et transaction que les clients.
+Aucun mot de passe provisoire ; cette route n'amorce pas le premier GLOBAL.
 
-Seul le principal ADMIN GLOBAL relu en base peut appeler ce parcours. Un ADMIN LOCAL reçoit 403, même pour créer un LOCAL, même si le JSON déclare GLOBAL. La route ne sert pas à amorcer le premier GLOBAL.
+### POST /api/admin/comptes/{id}/invitations
 
-Création transactionnelle et invitation A7 ; 201 proposé, sans secret ; erreurs 400/401/403/404/409 comme ci-dessus. Procédure opérateur initiale, représentation du compte invité sans hash et éventuelle modification de périmètre restent P06.
+Corps absent ou objet vide ; aucun destinataire libre ni champ de sécurité.
+GLOBAL : réseau. LOCAL : seulement compte CLIENT LOCAL de sa zone.
+Absent/invisible : même 404 ; VIP/OCCASIONNEL visible au LOCAL mais non créable : 403.
+INVITE et activités toujours valides, contact enregistré requis ; sinon 409, sans réactivation.
+Révoque l'ancienne preuve et annule les anciens messages PENDING avant nouvelle preuve/outbox,
+dans une transaction. 202 {statut: PENDING, expireA}, no-store ; ne signifie pas e-mail livré.
+
+### POST /api/auth/invitations/accept
+
+AcceptInvitationRequest : jeton opaque et password uniquement, champs inconnus refusés.
+Route publique limitée à la preuve personnelle. Password non blanc, minimum 15 points de code Unicode,
+maximum 72 octets UTF-8 ; pas de troncature ni composition imposée. Pas de minimum rétroactif au login.
+Consommation + contrôles d'activité + BCrypt + INITIALISE atomiques ; aucune réactivation ni changement
+de numéro. 204 no-store, sans JWT. Connexion normale par POST login puis GET me.
+
+400 générique pour preuve invalide/expirée/révoquée/consommée ou compte/client désactivé ;
+400 pour validations ; 401/403/404 selon authentification et périmètre sur les routes administratives ;
+409 pour unicité ou état incompatible ; 503 si chiffrement de livraison indisponible avec rollback.
+Les messages SQL, mots de passe, hashes et jetons bruts ne sont jamais retournés.
+
+### Bootstrap opérateur
+
+Point d'entrée distinct, sans HTTP, opt-in et adresse explicites ; aucun secret ou identifiant par défaut.
+Verrou commun PostgreSQL ; refus dès qu'un GLOBAL existe, y compris INVITE/inactif. Invitation normale.
+[Procédure et commande](parcours-invitations-preparation.md#premier-global--procédure-opérateur-sans-http-ni-valeur-par-défaut).
+
 
 ## 7. Statut technique — PROPOSÉ
 

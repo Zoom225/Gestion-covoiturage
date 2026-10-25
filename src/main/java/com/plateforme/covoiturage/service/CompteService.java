@@ -1,6 +1,17 @@
 package com.plateforme.covoiturage.service;
 
-import com.plateforme.covoiturage.dto.request.CompteSearchRequest;
+import com.plateforme.covoiturage.dto.request.*;
+import com.plateforme.covoiturage.dto.response.*;
+import com.plateforme.covoiturage.entity.Client;
+import com.plateforme.covoiturage.entity.Zone;
+import com.plateforme.covoiturage.enums.CategorieClient;
+import com.plateforme.covoiturage.enums.PerimetreAdmin;
+import com.plateforme.covoiturage.exception.InvalidAccountRequestException;
+import com.plateforme.covoiturage.exception.InvitationConflictException;
+import com.plateforme.covoiturage.repository.ClientRepository;
+import com.plateforme.covoiturage.repository.ZoneRepository;
+import com.plateforme.covoiturage.repository.InvitationOutboxRepository;
+import jakarta.validation.Validator;
 import com.plateforme.covoiturage.dto.response.CompteAdministrationResponse;
 import com.plateforme.covoiturage.dto.response.ComptePageResponse;
 import com.plateforme.covoiturage.entity.Compte;
@@ -28,6 +39,97 @@ public class CompteService {
     private final CompteRepository comptes;
     private final AdminAuthorization authorization;
     private final CompteMapper mapper;
+    private final ClientRepository clients;
+    private final ZoneRepository zones;
+    private final ClientNumberGenerator numbers;
+    private final InvitationService invitations;
+    private final InvitationDeliveryService delivery;
+    private final InvitationOutboxRepository outbox;
+    private final Validator validator;
+
+    @Transactional
+    public CompteInvitationResponse createClient(Authentication actor, CreateClientRequest request) {
+        validate(request);
+        authorization.requireClientCreation(actor, request.categorie(), request.zoneClientId());
+        if (request.categorie() == CategorieClient.LOCAL && request.zoneClientId() == null) {
+            throw new InvalidAccountRequestException();
+        }
+        Zone zone = zone(request.zoneClientId());
+        String number = numbers.reserve(request.categorie());
+        var client = clients.saveAndFlush(new Client(number, request.categorie(), true, zone));
+        var compte = Compte.invite(number, true, RoleTechnique.CLIENT, client, null, null);
+        compte.definirContactInvitation(canonicalEmail(request.email()));
+        return createAndQueue(compte);
+    }
+
+    @Transactional
+    public CompteInvitationResponse createAdministrateur(Authentication actor, CreateAdministrateurRequest request) {
+        authorization.requireGlobal(actor);
+        validate(request);
+        comptes.verrouillerAdministrationGlobale();
+        return createAdmin(request);
+    }
+
+    /** Appelé uniquement par le point d'entrée opérateur, jamais par un contrôleur. */
+    @Transactional
+    public void bootstrapGlobal(String email) {
+        var request = new CreateAdministrateurRequest(email, PerimetreAdmin.GLOBAL, null);
+        validate(request);
+        comptes.verrouillerAdministrationGlobale();
+        if (comptes.existsByRoleAndPerimetreAdmin(RoleTechnique.ADMIN, PerimetreAdmin.GLOBAL)) {
+            throw new InvitationConflictException();
+        }
+        createAdmin(request);
+    }
+
+    @Transactional
+    public InvitationStatusResponse renewInvitation(Authentication actor, long id) {
+        // Scope SQL avant toute divulgation ; invisible et absent ont le même 404.
+        var spec = withinScope(actor).and((root, query, cb) -> cb.equal(root.get("id"), id));
+        var compte = comptes.findOne(spec).orElseThrow(ResourceNotFoundException::new);
+        authorization.requireInvitationManagement(actor, compte);
+        if (!"INVITE".equals(comptes.verrouillerEtatPourInvitation(id).orElse(""))
+                || !comptes.activiteCompteVerrouillee(id).orElse(false)
+                || !comptes.activiteClientVerrouillee(id).orElse(true)
+                || compte.getInvitationEmail() == null) {
+            throw new InvitationConflictException();
+        }
+        outbox.cancelForAccount(id);
+        var issued = invitations.renouveler(id);
+        delivery.enqueue(compte.getInvitationEmail(), issued);
+        return new InvitationStatusResponse("PENDING", issued.expireA());
+    }
+
+    private CompteInvitationResponse createAdmin(CreateAdministrateurRequest request) {
+        if ((request.perimetreAdmin() == PerimetreAdmin.LOCAL) != (request.zoneAdminId() != null)) {
+            throw new InvalidAccountRequestException();
+        }
+        String email = canonicalEmail(request.email());
+        var compte = Compte.invite(email, true, RoleTechnique.ADMIN, null,
+                request.perimetreAdmin(), zone(request.zoneAdminId()));
+        compte.definirContactInvitation(email);
+        return createAndQueue(compte);
+    }
+
+    private CompteInvitationResponse createAndQueue(Compte compte) {
+        comptes.saveAndFlush(compte);
+        var issued = invitations.emettre(compte.getId());
+        delivery.enqueue(compte.getInvitationEmail(), issued);
+        return new CompteInvitationResponse(mapper.toResponse(compte), issued.expireA());
+    }
+
+    private Zone zone(Long id) {
+        return id == null ? null : zones.findById(id).orElseThrow(ResourceNotFoundException::new);
+    }
+
+    private String canonicalEmail(String email) {
+        return email.toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private void validate(Object request) {
+        if (request == null || !validator.validate(request).isEmpty()) throw new InvalidAccountRequestException();
+    }
+
 
     public ComptePageResponse search(Authentication actor, CompteSearchRequest search) {
         var specification = withinScope(actor).and(filters(search));

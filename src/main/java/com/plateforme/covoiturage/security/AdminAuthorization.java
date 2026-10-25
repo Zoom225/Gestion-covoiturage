@@ -35,6 +35,29 @@ public class AdminAuthorization {
         throw new AccessDeniedException("Accès interdit");
     }
 
+
+    /** Création : GLOBAL réseau ; LOCAL uniquement LOCAL dans sa zone, sans habilitation supplémentaire. */
+    public void requireClientCreation(Authentication actor,
+            com.plateforme.covoiturage.enums.CategorieClient category, Long zoneId) {
+        Long scope = requireAccountReadZone(actor);
+        if (scope != null && (category != com.plateforme.covoiturage.enums.CategorieClient.LOCAL
+                || !scope.equals(zoneId))) throw new AccessDeniedException("Accès interdit");
+    }
+
+    public void requireGlobal(Authentication actor) {
+        if (requireAccountReadZone(actor) != null) throw new AccessDeniedException("Accès interdit");
+    }
+
+    /** Même droit que la création ; le service a déjà filtré la visibilité en SQL. */
+    public void requireInvitationManagement(Authentication actor, com.plateforme.covoiturage.entity.Compte target) {
+        if (target.getRole() == RoleTechnique.ADMIN) {
+            requireGlobal(actor);
+        } else {
+            requireClientCreation(actor, target.getClient().getCategorie(),
+                    target.getClient().getZone() == null ? null : target.getClient().getZone().getId());
+        }
+    }
+
     private ProfileResponse adminProfile(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()
                 || !(authentication.getPrincipal() instanceof ComptePrincipal principal)
