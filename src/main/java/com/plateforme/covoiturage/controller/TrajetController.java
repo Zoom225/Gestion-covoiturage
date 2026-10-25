@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class TrajetController {
  private final TrajetService trips;
  private final ReservationService bookings;
+ @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode="201",description="Trajet et place logique crees")
  @PostMapping("/trajets") @Operation(summary="Creer un trajet et la place logique EN_ATTENTE de l'organisateur")
  public ResponseEntity<TrajetResponse> create(@Parameter(hidden=true) Authentication actor,@Valid @RequestBody CreateTrajetRequest request){
   var result=trips.create(actor,request);
@@ -31,10 +32,12 @@ public class TrajetController {
  }
  @GetMapping("/trajets/{id}") @Operation(summary="Consulter un trajet visible")
  public TrajetResponse detail(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id){return trips.detail(actor,id);}
+ @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode="201",description="Demande EN_ATTENTE creee")
  @PostMapping("/trajets/{id}/reservations") @Operation(summary="Demander sa reservation publique EN_ATTENTE",description="Aucun paiement ni confirmation simule dans ce parcours.")
  public ResponseEntity<ReservationResponse> reserve(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id){
   return ResponseEntity.status(201).body(bookings.reserve(actor,id));
  }
+ @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode="201",description="Participant EN_ATTENTE ajoute")
  @PostMapping("/trajets/{id}/participants") @Operation(summary="Ajouter un participant prive EN_ATTENTE (organisateur uniquement)")
  public ResponseEntity<ReservationResponse> participant(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id,
   @Valid @RequestBody PrivateParticipantRequest request){return ResponseEntity.status(201).body(bookings.addPrivate(actor,id,request.clientId()));}

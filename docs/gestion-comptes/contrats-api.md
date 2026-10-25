@@ -272,3 +272,7 @@ Références : DEC/A1–A9 ; RM01–RM04/RM07/RM09–RM13/RM49/RM51/RM57–RM60 
 ## Extension metier - lot 5
 
 Les [contrats de trajets et reservations](../lot-5-trajets-reservations/implementation.md) reutilisent le JWT existant et les identites Client/Compte. Aucun second AuthService, aucune modification des invitations.
+
+## Extension metier - lot 6
+
+Les [contrats de paiements et dettes](../lot-6-paiements-dettes/implementation.md) conservent JWT/BCrypt et les activites independantes. Une regularisation ne reactive jamais un compte ou client desactive.

@@ -445,3 +445,8 @@ Contrats courants, decisions D1-D5, limites et tests : [dossier lot 4](docs/lot-
 ## Trajets et reservations - lot 5
 
 [Contrats, modele, regles et limites](docs/lot-5-trajets-reservations/implementation.md). Reservations EN_ATTENTE uniquement ; confirmation reservee au paiement. Ne pas lancer Flyway contre la base partagee sans autorisation.
+
+
+## Paiements, dettes et traitement J-1 - lot 6
+
+[API, garanties transactionnelles et preuves TFE](docs/lot-6-paiements-dettes/implementation.md). La simulation de paiement est reservee a dev sans prod ; aucun prestataire bancaire reel. Les migrations ne doivent pas etre appliquees a la base partagee sans autorisation.

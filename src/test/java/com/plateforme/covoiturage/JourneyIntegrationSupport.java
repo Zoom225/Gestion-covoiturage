@@ -27,7 +27,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.*;
 
-@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes=CovoiturageApplication.class,webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import({TestcontainersConfiguration.class,JourneyIntegrationSupport.TimeConfiguration.class})
 @ActiveProfiles("dev")
 abstract class JourneyIntegrationSupport {

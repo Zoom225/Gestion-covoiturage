@@ -20,9 +20,11 @@ public class BookingPolicy {
   Instant opens=departure.atZone(ZoneId.of(zone.getFuseauHoraire())).minusDays(days).toInstant();
   if(!departure.isAfter(now)||now.isBefore(opens))throw new BusinessRuleException("BOOKING_HORIZON");
  }
- public void open(Trajet trip){
+ public static final int MAX_CONFIRMED=4;
+ public long open(Trajet trip){
   if(trip.getStatut()!=StatutTrajet.PLANIFIE)throw new BusinessRuleException("TRIP_NOT_OPEN");
-  if(reservations.countByTrajetIdAndStatut(trip.getId(),StatutReservation.CONFIRMEE)>=4)
-   throw new BusinessRuleException("TRIP_FULL");
+  long confirmed=reservations.countByTrajetIdAndStatut(trip.getId(),StatutReservation.CONFIRMEE);
+  if(confirmed>=MAX_CONFIRMED)throw new BusinessRuleException("TRIP_FULL");
+  return confirmed;
  }
 }

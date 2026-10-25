@@ -25,6 +25,12 @@ public class GlobalExceptionHandler {
                 "VALIDATION_ERROR", "Données invalides", request.getRequestURI(), errors));
     }
 
+    @ExceptionHandler(org.springframework.web.bind.ServletRequestBindingException.class)
+    ResponseEntity<ApiErrorResponse> missingParameter(HttpServletRequest request){
+        return ResponseEntity.badRequest().body(ApiErrorResponse.of(400,"INVALID_REQUEST",
+                "Parametre requis absent ou invalide",request.getRequestURI()));
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiErrorResponse> malformedBody(HttpServletRequest request) {
         return ResponseEntity.badRequest().body(ApiErrorResponse.of(400, "INVALID_REQUEST",
@@ -54,6 +60,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(ApiErrorResponse.of(status,
                 status == 400 ? "VALIDATION_ERROR" : "INTERNAL_ERROR",
                 status == 400 ? "Données invalides" : "Erreur interne", request.getRequestURI()));
+    }
+
+    @ExceptionHandler(PaymentUnavailableException.class)
+    ResponseEntity<ApiErrorResponse> paymentUnavailable(HttpServletRequest request){
+        return ResponseEntity.status(503).body(ApiErrorResponse.of(503,"PAYMENT_UNAVAILABLE",
+                "Validation de paiement indisponible",request.getRequestURI()));
     }
 
     @ExceptionHandler(BusinessRuleException.class)
