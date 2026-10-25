@@ -15,6 +15,6 @@ public interface TrajetRepository extends JpaRepository<Trajet,Long>,JpaSpecific
  Optional<Long> lock(@Param("id") long id);
  @Query("select (count(t)>0) from Trajet t where t.vehicule.id=:vehicle and t.statut<>com.plateforme.covoiturage.enums.StatutTrajet.ANNULE and t.depart<:end and t.arrivee>:start")
  boolean overlaps(@Param("vehicle") long vehicle,@Param("start") Instant start,@Param("end") Instant end);
- @Query("select t.id from Trajet t where t.type=com.plateforme.covoiturage.enums.TypeTrajet.PRIVE and t.statut=com.plateforme.covoiturage.enums.StatutTrajet.PLANIFIE and t.depart<:until order by t.id")
- List<Long> privateCandidates(@Param("until") Instant until,Pageable page);
+ @Query("select t.id from Trajet t where t.id>:after and t.type=com.plateforme.covoiturage.enums.TypeTrajet.PRIVE and t.statut=com.plateforme.covoiturage.enums.StatutTrajet.PLANIFIE and t.depart<:until order by t.id")
+ List<Long> j1Candidates(@Param("after") long after,@Param("until") Instant until,Pageable page);
 }

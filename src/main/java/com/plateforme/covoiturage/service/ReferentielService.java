@@ -27,6 +27,20 @@ public class ReferentielService {
     private final ReferentielMapper mapper;
     private final ClientRepository clients;
     private final ZoneAccessRepository grants;
+    private final com.plateforme.covoiturage.security.ClientAuthorization clientAuthorization;
+
+    public ReferencePageResponse<ZoneResponse> clientZones(Authentication actor,ReferencePageRequest page){
+        var client=clientAuthorization.require(actor);
+        var allowed=grants.allowedZones(client.getId());
+        Specification<Zone> spec=(root,query,cb)->root.get("id").in(allowed);
+        return ReferencePageResponse.from(zones.findAll(spec,pageable(page)).map(mapper::zone));
+    }
+    public ReferencePageResponse<VehiculeResponse> clientVehicles(Authentication actor,ReferencePageRequest page,Long zoneId){
+        var client=clientAuthorization.require(actor);
+        var allowed=grants.allowedZones(client.getId());
+        Specification<Vehicule> spec=(root,query,cb)->root.get("zone").get("id").in(allowed);
+        return ReferencePageResponse.from(vehicules.findAll(spec.and(vehiculeScope(zoneId)),pageable(page)).map(mapper::vehicule));
+    }
 
     @Transactional
     public ZoneResponse createZone(Authentication actor,com.plateforme.covoiturage.dto.request.ZoneWriteRequest request){
