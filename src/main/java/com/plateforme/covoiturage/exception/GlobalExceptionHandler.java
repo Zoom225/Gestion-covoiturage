@@ -56,6 +56,12 @@ public class GlobalExceptionHandler {
                 status == 400 ? "Données invalides" : "Erreur interne", request.getRequestURI()));
     }
 
+    @ExceptionHandler(BusinessRuleException.class)
+    ResponseEntity<ApiErrorResponse> business(BusinessRuleException ex,HttpServletRequest request){
+        return ResponseEntity.status(409).body(ApiErrorResponse.of(409,ex.getCode(),
+                "Operation incompatible avec les regles metier",request.getRequestURI()));
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     ResponseEntity<ApiErrorResponse> notFound(HttpServletRequest request) {
         return ResponseEntity.status(404).body(ApiErrorResponse.of(404, "NOT_FOUND",
