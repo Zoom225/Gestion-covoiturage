@@ -268,3 +268,7 @@ Ne pas renvoyer la valeur rejetée d'un mot de passe, une requête SQL, un nom t
 Future sécurité : contrôles de rôle et de périmètre dans les services, plus restrictions HTTP ; seul POST register explicitement public lorsque livré, pas /api/auth/** entièrement public. Les parcours de preuve/invitation devront avoir leur propre preuve à usage unique et une limitation des abus. Pas d'accès à une API existante accordé par une catégorie métier.
 
 Références : DEC/A1–A9 ; RM01–RM04/RM07/RM09–RM13/RM49/RM51/RM57–RM60 ; AA5–AA9. Les API seules ne démontrent pas les acquis : exécuter ultérieurement les [scénarios](tests-acceptation.md).
+
+## Extension metier - lot 5
+
+Les [contrats de trajets et reservations](../lot-5-trajets-reservations/implementation.md) reutilisent le JWT existant et les identites Client/Compte. Aucun second AuthService, aucune modification des invitations.

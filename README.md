@@ -440,3 +440,8 @@ Le [socle du lot 4](docs/lot-4-zones-vehicules/consultation.md), lié à l’iss
 ## Zones et acces client - lot 4
 
 Contrats courants, decisions D1-D5, limites et tests : [dossier lot 4](docs/lot-4-zones-vehicules/decisions-metier-d1-d5.md). V10 additive ; aucune migration appliquee a la base partagee. Les mutations vehicules/indisponibilites restent fermees faute de droits definis.
+
+
+## Trajets et reservations - lot 5
+
+[Contrats, modele, regles et limites](docs/lot-5-trajets-reservations/implementation.md). Reservations EN_ATTENTE uniquement ; confirmation reservee au paiement. Ne pas lancer Flyway contre la base partagee sans autorisation.

@@ -47,6 +47,7 @@ public class SecurityConfiguration {
                     auth.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/invitations/accept").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                             .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                            .requestMatchers("/api/trajets", "/api/trajets/**", "/api/reservations/**").hasRole("CLIENT")
                             .anyRequest().denyAll();
                 })
                 .exceptionHandling(config -> config.authenticationEntryPoint(errors).accessDeniedHandler(errors))
