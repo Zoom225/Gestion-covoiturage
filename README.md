@@ -431,3 +431,7 @@ Le worker SMTP reste désactivé par défaut ; aucun envoi réel n'est effectué
 ## Création et activation des comptes — PR #24
 
 DEC-COMPTES-006 valide P05/P07/P08/P09 pour les créations administratives et mots de passe par invitation. Les quatre nouveaux POST, le renvoi sécurisé, V8 additive et le bootstrap opérateur sont décrits dans [le dossier de réalisation](docs/gestion-comptes/parcours-invitations-preparation.md). Les instantanés des lots précédents sont historiques. Aucun compte créé au démarrage, aucune migration exécutée sur la base partagée pendant les tests ; SMTP simulé et PostgreSQL Testcontainers.
+
+## Lot 4 — consultation des référentiels
+
+Le [socle du lot 4](docs/lot-4-zones-vehicules/consultation.md), lié à l’issue #25, ajoute six GET sécurisés pour zones, véhicules et périodes d’indisponibilité. Le périmètre GLOBAL/LOCAL est appliqué en SQL avant pagination et comptage. V9 est additive ; aucune mutation, suppression logique ou règle de trajet non validée n’est exposée. Les lots 5/6 attendent la stabilisation du modèle et des contrats.

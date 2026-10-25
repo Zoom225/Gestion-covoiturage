@@ -23,6 +23,11 @@ public class AdminAuthorization {
      * Aucun autre profil n'obtient de périmètre.
      */
     public Long requireAccountReadZone(Authentication authentication) {
+        return requireZoneScope(authentication);
+    }
+
+    /** Périmètre administratif commun, utilisé par les comptes et référentiels en lecture. */
+    public Long requireZoneScope(Authentication authentication) {
         var profile = adminProfile(authentication);
         if (profile != null) {
             if (profile.perimetreAdmin() == PerimetreAdmin.GLOBAL && profile.zoneAdminId() == null) {
