@@ -28,6 +28,15 @@ public class ReferentielService {
     private final ClientRepository clients;
     private final ZoneAccessRepository grants;
     private final com.plateforme.covoiturage.security.ClientAuthorization clientAuthorization;
+    private final TrajetRepository trips;
+    private final SensitiveOperationJournal journal;
+
+    public AdminStatisticsResponse statistics(Authentication actor,Long zoneId){
+        var p=trips.statistics(authorization.requireZoneScope(actor),zoneId);
+        return new AdminStatisticsResponse(p.getTrajetsPlanifies(),p.getTrajetsComplets(),p.getTrajetsAnnules(),
+            p.getReservationsEnAttente(),p.getReservationsConfirmees(),p.getReservationsAnnulees(),
+            p.getPaiementsPlaces(),p.getPaiementsDettes(),p.getDettesRestantes());
+    }
 
     public ReferencePageResponse<ZoneResponse> clientZones(Authentication actor,ReferencePageRequest page){
         var client=clientAuthorization.require(actor);
@@ -47,20 +56,28 @@ public class ReferentielService {
         authorization.requireGlobal(actor); validateTimezone(request.fuseauHoraire());
         var zone=new Zone(request.nom().strip());
         zone.configure(request.nom().strip(),request.fuseauHoraire(),request.ouverteOccasionnels());
-        return mapper.zone(zones.save(zone));
+        zones.saveAndFlush(zone);
+        journal.record(SensitiveOperationJournal.Action.ZONE_CREEE,actor,SensitiveOperationJournal.Resource.ZONE,zone.getId());
+        return mapper.zone(zone);
     }
     @Transactional
     public ZoneResponse updateZone(Authentication actor,long id,com.plateforme.covoiturage.dto.request.ZoneWriteRequest request){
         authorization.requireGlobal(actor);validateTimezone(request.fuseauHoraire());
         var zone=zones.lockById(id).orElseThrow(ResourceNotFoundException::new);
         zone.configure(request.nom().strip(),request.fuseauHoraire(),request.ouverteOccasionnels());
+        journal.record(SensitiveOperationJournal.Action.ZONE_CONFIGUREE,actor,SensitiveOperationJournal.Resource.ZONE,id);
         return mapper.zone(zone);
     }
     @Transactional
     public ZoneResponse zoneStatus(Authentication actor,long id,boolean active){
         authorization.requireGlobal(actor);
         var zone=zones.lockById(id).orElseThrow(ResourceNotFoundException::new);
-        zone.setActif(active);return mapper.zone(zone);
+        if(zone.isActif()!=active){
+            zone.setActif(active);
+            journal.record(active?SensitiveOperationJournal.Action.ZONE_ACTIVEE:SensitiveOperationJournal.Action.ZONE_DESACTIVEE,
+                actor,SensitiveOperationJournal.Resource.ZONE,id);
+        }
+        return mapper.zone(zone);
     }
     @Transactional
     public void vipAccess(Authentication actor,long zoneId,long clientId,boolean allow){
@@ -69,7 +86,10 @@ public class ReferentielService {
         var client=clients.findById(clientId).orElseThrow(ResourceNotFoundException::new);
         if(client.getCategorie()!=com.plateforme.covoiturage.enums.CategorieClient.VIP)
             throw new com.plateforme.covoiturage.exception.BusinessRuleException("VIP_REQUIRED");
+        boolean existed=grants.exists(clientId,zoneId);
         if(allow)grants.grant(clientId,zoneId);else grants.revoke(clientId,zoneId);
+        if(existed!=allow)journal.record(allow?SensitiveOperationJournal.Action.AUTORISATION_VIP_ACCORDEE:SensitiveOperationJournal.Action.AUTORISATION_VIP_RETIREE,
+            actor,SensitiveOperationJournal.Resource.ZONE,zoneId,clientId);
     }
     private void validateTimezone(String timezone){
         if(!java.time.ZoneId.getAvailableZoneIds().contains(timezone))

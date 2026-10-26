@@ -20,7 +20,13 @@ class TestcontainersConfiguration {
 	@Bean
 	@ServiceConnection
 	PostgreSQLContainer postgresContainer() {
-		return new PostgreSQLContainer(DockerImageName.parse("postgres:16.6-alpine"));
+		return disposablePostgres();
+	}
+
+	/** Retry container creation only, never a business assertion or a shared database. */
+	static PostgreSQLContainer disposablePostgres() {
+		return new PostgreSQLContainer(DockerImageName.parse("postgres:16.6-alpine"))
+				.withStartupAttempts(3);
 	}
 
 }

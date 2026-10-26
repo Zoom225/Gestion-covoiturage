@@ -46,6 +46,7 @@ public class CompteService {
     private final InvitationDeliveryService delivery;
     private final InvitationOutboxRepository outbox;
     private final Validator validator;
+    private final SensitiveOperationJournal journal;
 
     @Transactional
     public CompteInvitationResponse createClient(Authentication actor, CreateClientRequest request) {
@@ -59,7 +60,9 @@ public class CompteService {
         var client = clients.saveAndFlush(new Client(number, request.categorie(), true, zone));
         var compte = Compte.invite(number, true, RoleTechnique.CLIENT, client, null, null);
         compte.definirContactInvitation(canonicalEmail(request.email()));
-        return createAndQueue(compte);
+        var result=createAndQueue(compte);
+        journal.record(SensitiveOperationJournal.Action.COMPTE_CREE,actor,SensitiveOperationJournal.Resource.COMPTE,compte.getId());
+        return result;
     }
 
     @Transactional
@@ -67,7 +70,9 @@ public class CompteService {
         authorization.requireGlobal(actor);
         validate(request);
         comptes.verrouillerAdministrationGlobale();
-        return createAdmin(request);
+        var result=createAdmin(request);
+        journal.record(SensitiveOperationJournal.Action.COMPTE_CREE,actor,SensitiveOperationJournal.Resource.COMPTE,result.compte().compteId());
+        return result;
     }
 
     /** Appelé uniquement par le point d'entrée opérateur, jamais par un contrôleur. */
@@ -79,7 +84,8 @@ public class CompteService {
         if (comptes.existsByRoleAndPerimetreAdmin(RoleTechnique.ADMIN, PerimetreAdmin.GLOBAL)) {
             throw new InvitationConflictException();
         }
-        createAdmin(request);
+        var result=createAdmin(request);
+        journal.record(SensitiveOperationJournal.Action.COMPTE_CREE,null,SensitiveOperationJournal.Resource.COMPTE,result.compte().compteId());
     }
 
     @Transactional
@@ -97,6 +103,7 @@ public class CompteService {
         outbox.cancelForAccount(id);
         var issued = invitations.renouveler(id);
         delivery.enqueue(compte.getInvitationEmail(), issued);
+        journal.record(SensitiveOperationJournal.Action.INVITATION_RENOUVELEE,actor,SensitiveOperationJournal.Resource.COMPTE,id);
         return new InvitationStatusResponse("PENDING", issued.expireA());
     }
 

@@ -28,6 +28,13 @@ import org.springframework.web.bind.annotation.*;
 public class ReferentielController {
     private final ReferentielService service;
 
+    @GetMapping("/statistiques")
+    @Operation(summary="Consulter les statistiques administratives",description="Cumuls persistés par état et montants EUR séparés places/dettes. GLOBAL réseau ou zone filtrée, LOCAL uniquement sa zone ; le filtre ne peut étendre le périmètre. Aucun filtre temporel implicite.")
+    public ResponseEntity<AdminStatisticsResponse> statistics(@Parameter(hidden=true) Authentication actor,
+            @Positive @RequestParam(required=false) Long zoneId){
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.statistics(actor,zoneId));
+    }
+
     @PostMapping("/zones")
     @Operation(summary="Creer une zone (GLOBAL)")
     @ApiResponse(responseCode="201",description="Zone creee")

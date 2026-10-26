@@ -7,6 +7,28 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.Instant;
 import java.util.*;
 public interface TrajetRepository extends JpaRepository<Trajet,Long>,JpaSpecificationExecutor<Trajet> {
+ @Query(value="""
+  with perimetre as (
+   select id, statut from trajet
+    where (cast(:adminScope as bigint) is null or zone_id=:adminScope)
+      and (cast(:zoneFilter as bigint) is null or zone_id=:zoneFilter)
+  ), inscriptions as (
+   select r.id,r.statut from reservation r join perimetre t on t.id=r.trajet_id
+  ), dettes as (
+   select d.id,d.montant,d.regle from dette_trajet d join perimetre t on t.id=d.trajet_id
+  )
+  select
+   (select count(*) from perimetre where statut='PLANIFIE') as "trajetsPlanifies",
+   (select count(*) from perimetre where statut='COMPLET') as "trajetsComplets",
+   (select count(*) from perimetre where statut='ANNULE') as "trajetsAnnules",
+   (select count(*) from inscriptions where statut='EN_ATTENTE') as "reservationsEnAttente",
+   (select count(*) from inscriptions where statut='CONFIRMEE') as "reservationsConfirmees",
+   (select count(*) from inscriptions where statut='ANNULEE') as "reservationsAnnulees",
+   (select coalesce(sum(p.montant),0) from paiement_place p join inscriptions r on r.id=p.reservation_id) as "paiementsPlaces",
+   (select coalesce(sum(p.montant),0) from paiement_dette p join dettes d on d.id=p.dette_id) as "paiementsDettes",
+   (select coalesce(sum(montant-regle),0) from dettes) as "dettesRestantes"
+  """,nativeQuery=true)
+ AdminStatisticsProjection statistics(@Param("adminScope") Long adminScope,@Param("zoneFilter") Long zoneFilter);
  @Override @EntityGraph(attributePaths={"zone","vehicule","organisateur"})
  Page<Trajet> findAll(Specification<Trajet> specification,Pageable page);
  @Override @EntityGraph(attributePaths={"zone","vehicule","organisateur"})

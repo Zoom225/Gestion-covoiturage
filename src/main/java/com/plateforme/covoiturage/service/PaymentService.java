@@ -32,6 +32,7 @@ public class PaymentService {
  private final PaymentMapper mapper;
  private final EntityManager entityManager;
  private final Clock clock;
+ private final SensitiveOperationJournal journal;
 
  @Transactional
  public PaymentResponse paySeat(Authentication actor,long reservationId,UUID key){
@@ -53,9 +54,14 @@ public class PaymentService {
   String mode=gateway.validate(key,SEAT_PRICE).name();
   var payment=seatPayments.save(new PaiementPlace(booking,key,SEAT_PRICE,mode,clock.instant()));
   booking.confirm();
+  journal.record(SensitiveOperationJournal.Action.PLACE_PAYEE,actor,SensitiveOperationJournal.Resource.PAIEMENT_PLACE,payment.getId());
+  journal.record(SensitiveOperationJournal.Action.RESERVATION_CONFIRMEE,actor,SensitiveOperationJournal.Resource.RESERVATION,booking.getId());
   // Confirm while PLANIFIE, then publish COMPLET under the same retained lock.
   entityManager.flush();
-  if(confirmed==BookingPolicy.MAX_CONFIRMED-1){trip.markFull();entityManager.flush();}
+  if(confirmed==BookingPolicy.MAX_CONFIRMED-1){
+   trip.markFull();entityManager.flush();
+   journal.record(SensitiveOperationJournal.Action.TRAJET_COMPLET,actor,SensitiveOperationJournal.Resource.TRAJET,trip.getId());
+  }
   // Deferred PostgreSQL proof enforces both directions at commit.
   return mapper.place(payment);
  }
@@ -76,7 +82,17 @@ public class PaymentService {
   String mode=gateway.validate(key,amount).name();
   debt.settle(amount);
   var payment=debtPayments.save(new PaiementDette(debt,key,amount,mode,clock.instant()));
-  entityManager.flush();return mapper.debt(payment);
+  entityManager.flush();
+  journal.record(SensitiveOperationJournal.Action.DETTE_REGLEE,actor,SensitiveOperationJournal.Resource.PAIEMENT_DETTE,payment.getId());
+  if("REGULARISEE".equals(debt.getStatut()))
+   journal.record(SensitiveOperationJournal.Action.DETTE_REGULARISEE,actor,SensitiveOperationJournal.Resource.DETTE,debtId);
+  return mapper.debt(payment);
+ }
+ @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+ public ReferencePageResponse<PaymentResponse> history(Authentication actor,ReferencePageRequest page){
+  var client=authorization.require(actor);
+  return ReferencePageResponse.from(seatPayments.history(client.getId(),
+   PageRequest.of(page.page(),page.size())).map(mapper::history));
  }
  public ReferencePageResponse<DetteResponse> mine(Authentication actor,ReferencePageRequest page){
   var client=authorization.require(actor);
