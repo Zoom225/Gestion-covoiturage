@@ -44,4 +44,10 @@ public class TrajetController {
  @GetMapping("/reservations/me") @Operation(summary="Consulter uniquement ses reservations")
  public ReferencePageResponse<ReservationResponse> mine(@Parameter(hidden=true) Authentication actor,
   @Valid @ModelAttribute @ParameterObject ReferencePageRequest page){return bookings.mine(actor,page);}
+ @PostMapping("/reservations/{id}/annulation")
+ @Operation(summary="Annuler sa réservation avant le départ",description="Le propriétaire seul peut annuler. Les paiements et dettes historiques restent conservés ; aucun remboursement automatique.")
+ public ResponseEntity<ReservationResponse> cancelBooking(@Parameter(hidden=true) Authentication actor,
+  @Positive @PathVariable long id){
+  return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(bookings.cancel(actor,id));
+ }
 }
