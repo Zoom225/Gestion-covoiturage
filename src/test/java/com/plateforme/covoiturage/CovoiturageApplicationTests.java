@@ -51,7 +51,7 @@ class CovoiturageApplicationTests {
 
 	@Test
 	void contextLoads() {
-		assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("13");
+		assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("14");
 		assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
 		assertThat(flyway.migrate().migrationsExecuted).isZero();
 		assertThat(jdbc.queryForObject("select version()", String.class)).contains("PostgreSQL 16.6");

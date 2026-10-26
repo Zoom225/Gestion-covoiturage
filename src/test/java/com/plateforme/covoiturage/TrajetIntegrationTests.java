@@ -165,10 +165,10 @@ class TrajetIntegrationTests extends JourneyIntegrationSupport {
   assertThat(read(call("GET","/api/reservations/me",vip,null)).path("totalElements").asLong()).isZero();
  }
  @Test void postgresChecksDatesZoneVehicleAndForeignKeys(){
-  assertThatThrownBy(()->jdbc.update("insert into trajet(zone_id,vehicule_id,organisateur_id,depart,arrivee,type) values(?,?,?,?,?,'PUBLIC')",
+  assertThatThrownBy(()->jdbc.update("insert into trajet(zone_id,vehicule_id,organisateur_id,depart,arrivee,type,origine,destination) values(?,?,?,?,?,'PUBLIC','Gare A','Gare B')",
    home.getId(),vehicle.getId(),local.getClient().getId(),Timestamp.from(NOW),Timestamp.from(NOW)))
    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
-  assertThatThrownBy(()->jdbc.update("insert into trajet(zone_id,vehicule_id,organisateur_id,depart,arrivee,type) values(?,?,?,?,?,'PUBLIC')",
+  assertThatThrownBy(()->jdbc.update("insert into trajet(zone_id,vehicule_id,organisateur_id,depart,arrivee,type,origine,destination) values(?,?,?,?,?,'PUBLIC','Gare A','Gare B')",
    away.getId(),vehicle.getId(),local.getClient().getId(),Timestamp.from(NOW),Timestamp.from(NOW.plusSeconds(3600))))
    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
  }

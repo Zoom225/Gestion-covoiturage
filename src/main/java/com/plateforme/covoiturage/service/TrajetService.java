@@ -35,7 +35,8 @@ public class TrajetService {
   availability.requireAvailable(vehicle,request.depart(),request.arrivee());
   if(trips.overlaps(vehicle.getId(),request.depart().minusSeconds(900),request.arrivee().plusSeconds(900)))
    throw new BusinessRuleException("VEHICLE_CONFLICT");
-  var trip=trips.saveAndFlush(new Trajet(zone,vehicle,client,request.depart(),request.arrivee(),request.type()));
+  var trip=trips.saveAndFlush(new Trajet(zone,vehicle,client,request.depart(),request.arrivee(),request.type(),
+   request.origine(),request.destination()));
   bookings.saveAndFlush(new Reservation(trip,client)); // logical first place, never confirmed here
   return mapper.trajet(trip);
  }
