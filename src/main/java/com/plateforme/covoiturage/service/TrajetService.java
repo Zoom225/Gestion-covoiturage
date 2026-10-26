@@ -47,8 +47,10 @@ public class TrajetService {
   Specification<Trajet> scope=(root,query,cb)->{
    var sub=query.subquery(Long.class);var booking=sub.from(Reservation.class);
    sub.select(booking.get("id")).where(cb.equal(booking.get("trajet").get("id"),root.get("id")),
-    cb.equal(booking.get("client").get("id"),client.getId()));
-   var visibility=cb.or(cb.equal(root.get("type"),TypeTrajet.PUBLIC),cb.exists(sub));
+    cb.equal(booking.get("client").get("id"),client.getId()),
+    cb.notEqual(booking.get("statut"),StatutReservation.ANNULEE));
+   var visibility=cb.or(cb.equal(root.get("type"),TypeTrajet.PUBLIC),
+    cb.equal(root.get("organisateur").get("id"),client.getId()),cb.exists(sub));
    var zones=root.get("zone").get("id").in(allowed);
    return zoneId==null?cb.and(zones,visibility):cb.and(zones,visibility,cb.equal(root.get("zone").get("id"),zoneId));
   };
@@ -58,7 +60,8 @@ public class TrajetService {
   var client=authorization.require(actor);
   var trip=trips.findById(id).orElseThrow(ResourceNotFoundException::new);
   if(!zoneAccess.allowedZones(client.getId()).contains(trip.getZone().getId())
-    ||(trip.getType()==TypeTrajet.PRIVE&&!bookings.existsByTrajetIdAndClientId(id,client.getId())))
+    ||(trip.getType()==TypeTrajet.PRIVE&&!trip.getOrganisateur().getId().equals(client.getId())
+      &&!bookings.existsByTrajetIdAndClientIdAndStatutNot(id,client.getId(),StatutReservation.ANNULEE)))
    throw new ResourceNotFoundException();
   return mapper.trajet(trip);
  }
