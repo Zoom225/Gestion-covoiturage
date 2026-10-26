@@ -41,13 +41,15 @@ END $$;
 CREATE FUNCTION proteger_reservation_annulee() RETURNS trigger
 LANGUAGE plpgsql SET search_path FROM CURRENT AS $$
 BEGIN
- IF OLD.statut='ANNULEE' AND NEW.statut<>'ANNULEE' THEN
+ IF (OLD.statut='ANNULEE' AND NEW.statut<>'ANNULEE')
+    OR (NEW.statut='ANNULEE' AND
+     (NEW.trajet_id<>OLD.trajet_id OR NEW.client_id<>OLD.client_id)) THEN
   RAISE EXCEPTION 'Cancelled reservation cannot be reactivated' USING ERRCODE='23514';
  END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER trg_reservation_annulee_immuable
-BEFORE UPDATE OF statut ON reservation FOR EACH ROW
+BEFORE UPDATE OF statut,trajet_id,client_id ON reservation FOR EACH ROW
 EXECUTE FUNCTION proteger_reservation_annulee();
 
 -- Le trigger de capacité V12 verrouille déjà le trajet avant ce recalcul.

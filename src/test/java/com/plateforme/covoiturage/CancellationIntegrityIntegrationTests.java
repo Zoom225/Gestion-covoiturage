@@ -46,6 +46,8 @@ class CancellationIntegrityIntegrationTests extends ReportingIntegrationSupport 
         assertThat(jdbc.queryForObject("select statut from dette_trajet where trajet_id=?", String.class, trip)).isEqualTo("ACTIVE");
         assertThatThrownBy(() -> jdbc.update("update reservation set statut='CONFIRMEE' where id=?", oldVip))
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update("update reservation set client_id=? where id=?", local.getClient().getId(), oldVip))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
 
         long replacement = reserve(trip, vip);
         assertThat(replacement).isNotEqualTo(oldVip);
