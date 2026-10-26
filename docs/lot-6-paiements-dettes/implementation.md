@@ -143,3 +143,88 @@ GET /api/zones et GET /api/vehicules fournissent au CLIENT actif les seules zone
 2. Après sa fusion autorisée, actualiser les références, intégrer le master actualisé dans la branche du lot 5 en préservant les fichiers locaux, puis recibler #29 vers master et revérifier la CI.
 3. Après fusion autorisée du lot 5, faire de même pour la PR du lot 6 actuellement basée sur feature/trips-reservations.
 Les worktrees sont conservés. Ne pas réinitialiser une branche ni forcer un push pour simplifier cette chaîne.
+
+## Finalisation backend — mission 1, 26 octobre 2026
+
+Références : #27 (paiements, issue déjà clôturée) et #31 (intégration Angular).
+Le worktree existant `feature/payments-debts` est réutilisé : son backend est identique
+au master distant `4a1d1a3`, sans merge, rebase ou changement de branche.
+
+### Intégrité PostgreSQL : migration additive V13
+
+V12 ne contrôlait que la nouvelle référence lors d'un UPDATE de paiement. Les deux
+contre-exemples sont reproduits sur PostgreSQL Testcontainers : une ancienne
+réservation CONFIRMEE sans paiement et une ancienne dette dont le solde ne correspond
+plus aux règlements. Aucune réaffectation n'est exposée par les API actuelles.
+
+`V13__validate_old_and_new_payment_references.sql` renforce les deux fonctions
+existantes pour vérifier OLD et NEW, sans modifier V1–V12. Les quatre triggers de
+contrainte restent `DEFERRABLE INITIALLY DEFERRED` : INSERT, UPDATE et DELETE sont
+contrôlés sur l'état final de la transaction. Les parents concernés sont verrouillés
+en ordre d'identifiant pour relire leur état ; un parent supprimé avec ses paiements
+dans une même transaction cohérente ne provoque pas de faux refus.
+
+La migration exclut les écritures pendant le précontrôle et le remplacement des
+fonctions. Elle refuse un historique déjà incohérent, sans le réécrire ni fabriquer
+de paiement. Une réconciliation explicitement autorisée serait alors nécessaire.
+Les FK, UNIQUE, CHECK des montants, clés UUID, paiements de 20 EUR et dette de 80 EUR
+restent conservés. Les réaffectations SQL qui préservent réellement les deux côtés
+au commit ne sont pas interdites arbitrairement ; aucun droit d'annulation ou de
+remboursement n'est ajouté.
+
+### CORS : header Idempotency-Key
+
+`Idempotency-Key` est ajouté à la liste explicite des headers CORS autorisés de
+`/api/**`, avec Authorization et Content-Type. Les origines configurées, méthodes,
+JWT stateless, contrôles de rôle et `allowCredentials=false` restent conservés.
+Un simple HTTP 200 de prévol ne suffit pas : les tests vérifient aussi que
+`Access-Control-Allow-Headers` autorise effectivement la clé d'idempotence.
+
+### Validation et limites
+
+`PaymentIntegrityIntegrationTests` couvre la reproduction V12, le refus d'une
+reprise incohérente, la conservation des lignes/checksums lors de V12→V13, les
+anciennes et nouvelles références, INSERT/UPDATE/DELETE, les transitions SQL
+cohérentes différées et les contraintes existantes. `PaymentIntegrationTests`
+réutilise le backend HTTP/PostgreSQL réel pour les prévols, POST authentifiés et
+rejeux des deux types de paiement ; 401, 403, JWT invalide, origines et headers
+non autorisés sont contrôlés. Les tests existants de dernière place, J-1 et
+concurrence restent actifs.
+L'assertion de version de `CovoiturageApplicationTests.contextLoads` attend
+désormais V13 ; la validation Flyway et l'absence de migration rejouée restent
+vérifiées, sans désactiver de test.
+
+Commandes PowerShell exécutées depuis la racine de la copie temporaire :
+
+```powershell
+.\mvnw.cmd --offline --batch-mode --no-transfer-progress '-Dtest=PaymentIntegrityIntegrationTests,PaymentIntegrationTests,SimulationGatewayTests,SecurityIntegrationTests' test
+.\mvnw.cmd --offline --batch-mode --no-transfer-progress clean verify
+```
+
+Toutes les exécutions utilisent une copie temporaire et PostgreSQL Testcontainers.
+Aucune V13 n'est appliquée à `carshare` ni `carshare_dev_v12` ; le backend local
+déjà démarré n'est pas redémarré par cette mission. Aucun frontend n'est modifié.
+Validation finale du 26 octobre 2026 : `clean verify` terminé à 11:34:04 CET,
+`BUILD SUCCESS` en 10 min 40 s, JAR Spring Boot construit. Les 464 tests passent,
+sans échec, erreur ou test ignoré : les 425 tests existants sont conservés,
+avec 29 nouveaux cas d'intégrité SQL et 10 cas CORS. Les suites paiements
+(47 tests), intégrité SQL (29), sécurité (26) et simulation (5) sont vertes.
+Les tests ciblés initiaux étaient également verts. Aucune CI distante n'est
+annoncée pour ces changements non publiés.
+
+Fichiers concernés : la migration V13, `security/SecurityConfiguration.java`,
+`PaymentIntegrityIntegrationTests.java`, `PaymentIntegrationTests.java`,
+`CovoiturageApplicationTests.java` et ce document. Les fichiers Java sont situés
+sous `src/main/java/com/plateforme/covoiturage` ou
+`src/test/java/com/plateforme/covoiturage` selon leur rôle.
+
+Contrôles de conservation : les 14 branches/HEAD et index Git sont identiques
+à l'inventaire initial, dont les 44 fichiers Angular indexés. Les empreintes
+des sauvegardes PostgreSQL en lecture seule de `carshare` (V4) et
+`carshare_dev_v12` (V12) sont identiques avant et après les tests. Les douze
+migrations V1–V12 restent inchangées. Aucun commit, push, merge ou rebase.
+
+Exigences renforcées : RM27/RM31/RM40/RM50/RM58, contrats REST de paiement et
+AA4/AA6/AA7/AA9/AA10/AA11. Les droits d'écriture des véhicules/indisponibilités,
+annulations, remboursements, réinscriptions, REALISE et statistiques restent à
+traiter séparément après les arbitrages nécessaires.
