@@ -30,6 +30,7 @@ public class TrajetService {
   var requester=authorization.require(actor);
   var zone=locks.zone(request.zoneId());var vehicle=locks.vehicle(request.vehiculeId());
   if(!vehicle.getZone().getId().equals(zone.getId()))throw new BusinessRuleException("VEHICLE_ZONE_MISMATCH");
+  if(!vehicle.isActif())throw new BusinessRuleException("VEHICLE_INACTIVE");
   var client=locks.client(requester.getId());
   policy.eligible(client,zone,request.depart());
   availability.requireAvailable(vehicle,request.depart(),request.arrivee());

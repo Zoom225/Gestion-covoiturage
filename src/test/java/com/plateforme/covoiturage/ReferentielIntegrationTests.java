@@ -330,7 +330,7 @@ class ReferentielIntegrationTests {
         write("PATCH",api("zones")+"/"+home.getId()+"/statut",global,"{\"actif\":false}");
         assertThat(jdbc.queryForObject("select count(*) from vehicule where zone_id=?",Integer.class,home.getId())).isEqualTo(2);
     }
-    @Test void swaggerExposesOnlyReadOperationsForNewReferences()throws Exception{
+    @Test void swaggerExposesExactlyValidatedReferenceOperations()throws Exception{
         var response=http.send(HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/v3/api-docs")).GET().build(),HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(200);
         var paths=read(response).path("paths");
@@ -338,11 +338,15 @@ class ReferentielIntegrationTests {
             for(String path:List.of(api(resource),api(resource)+"/{id}")){
                 assertThat(paths.path(path).has("get")).isTrue();
                 for(String verb:List.of("post","put","patch","delete")){
-                    boolean allowed=resource.equals("zones") && ((path.equals(api(resource))&&verb.equals("post"))
-                        || (path.endsWith("/{id}")&&verb.equals("put")));
+                    boolean collection=path.equals(api(resource));
+                    boolean allowed=(collection&&verb.equals("post"))
+                        || (!collection&&verb.equals("put")&&!resource.equals("vehicules"))
+                        || (!collection&&verb.equals("delete")&&resource.equals("indisponibilites"));
                     assertThat(paths.path(path).has(verb)).isEqualTo(allowed);
                 }
             }
         }
+        assertThat(paths.path(api("vehicules")+"/{id}/statut").has("patch")).isTrue();
+        assertThat(paths.path(api("zones")+"/{id}/statut").has("patch")).isTrue();
     }
 }

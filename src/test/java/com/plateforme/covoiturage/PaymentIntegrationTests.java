@@ -28,6 +28,7 @@ import static org.mockito.Mockito.*;
  "driveconnect.security.cors.allowed-origins=http://localhost:4200"})
 class PaymentIntegrationTests extends JourneyIntegrationSupport {
  @MockitoBean PaymentGateway gateway;
+ @org.springframework.test.context.bean.override.mockito.MockitoSpyBean AvailabilityService availability;
  @Autowired PaiementPlaceRepository seatPayments;
  @Autowired PaiementDetteRepository debtPayments;
  @Autowired DetteTrajetRepository debts;
@@ -164,7 +165,13 @@ class PaymentIntegrationTests extends JourneyIntegrationSupport {
   long id=create(local,TypeTrajet.PUBLIC);long reservation=reserve(id,vip);
   switch(kind){
    case "ANNULE","COMPLET"->jdbc.update("update trajet set statut=? where id=?",kind,id);
-   case "unavailable"->jdbc.update("insert into indisponibilite(vehicule_id,debut,fin) values(?,?,?)",vehicle.getId(),Timestamp.from(NOW.plusSeconds(172800)),Timestamp.from(NOW.plusSeconds(176400)));
+   case "unavailable"->{
+    // V15 refuse désormais cette incohérence SQL ; la revalidation reste défensive.
+    assertThatThrownBy(()->jdbc.update("insert into indisponibilite(vehicule_id,debut,fin) values(?,?,?)",
+     vehicle.getId(),Timestamp.from(NOW.plusSeconds(172800)),Timestamp.from(NOW.plusSeconds(176400))))
+     .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    doThrow(new BusinessRuleException("RESOURCE_UNAVAILABLE")).when(availability).requireAvailable(any(),any(),any());
+   }
    case "zoneInactive"->jdbc.update("update zone set actif=false where id=?",home.getId());
    case "grantRevoked"->tx.executeWithoutResult(s->grants.revoke(vip.getClient().getId(),home.getId()));
    case "debt"->{

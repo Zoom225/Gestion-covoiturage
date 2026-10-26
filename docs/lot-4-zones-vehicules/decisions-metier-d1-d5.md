@@ -35,6 +35,11 @@ Aucun paiement fictif ou place garantie n'est produit par le service de réserva
 
 ## Limites et décisions encore ouvertes
 
+Actualisation du 26 octobre 2026 : les droits GLOBAL/LOCAL de gestion de flotte et
+d'indisponibilités sont désormais validés et réalisés dans le
+[lot de gestion de flotte](gestion-flotte-indisponibilites.md). Les limites
+d'écriture ci-dessous décrivent l'état historique du lot 4 avant ce complément.
+
 D1 ne définit pas les droits d'écriture des véhicules et indisponibilités : aucun POST/PUT/PATCH/DELETE correspondant n'est exposé.
 Le modèle existant reste une flotte rattachée à une zone, sans propriété CLIENT inventée.
 Aucun changement libre de zone/catégorie client n'est ajouté ; création LOCAL avec sa zone via CompteService conservée.
