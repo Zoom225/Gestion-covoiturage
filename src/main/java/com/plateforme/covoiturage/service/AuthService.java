@@ -22,13 +22,15 @@ public class AuthService {
     private final String dummyHash;
     private final InvitationService invitations;
     private final com.plateforme.covoiturage.repository.InvitationOutboxRepository outbox;
+    private final SensitiveOperationJournal journal;
 
-    public AuthService(CompteRepository comptes, PasswordEncoder passwords, TokenService tokens, InvitationService invitations, com.plateforme.covoiturage.repository.InvitationOutboxRepository outbox) {
+    public AuthService(CompteRepository comptes, PasswordEncoder passwords, TokenService tokens, InvitationService invitations, com.plateforme.covoiturage.repository.InvitationOutboxRepository outbox, SensitiveOperationJournal journal) {
         this.comptes = comptes;
         this.passwords = passwords;
         this.tokens = tokens;
         this.invitations = invitations;
         this.outbox = outbox;
+        this.journal = journal;
         this.dummyHash = passwords.encode(java.util.UUID.randomUUID().toString());
     }
 
@@ -82,6 +84,8 @@ public class AuthService {
             throw new com.plateforme.covoiturage.exception.InvitationInvalideException();
         }
         outbox.cancelForAccount(compteId);
+        journal.recordByAccount(SensitiveOperationJournal.Action.COMPTE_ACTIVE,compteId,
+                SensitiveOperationJournal.Resource.COMPTE,compteId,null);
     }
 
     private static BadCredentialsException invalidCredentials() {

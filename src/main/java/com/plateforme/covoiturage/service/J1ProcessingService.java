@@ -16,6 +16,7 @@ public class J1ProcessingService {
  private final JourneyLocks locks;
  private final TransactionTemplate transactions;
  private final Clock clock;
+ private final SensitiveOperationJournal journal;
  /** Each candidate commits independently; retries and concurrent runs recheck under the trip lock. */
  public int catchUp(){
   int processed=0;
@@ -37,7 +38,11 @@ public class J1ProcessingService {
      if(trip.getType()!=TypeTrajet.PRIVE||trip.getStatut()!=StatutTrajet.PLANIFIE
        ||now.isBefore(deadline)||reservations.countByTrajetIdAndStatut(id,StatutReservation.CONFIRMEE)>=BookingPolicy.MAX_CONFIRMED)return false;
      trip.processJ1(now);
-     if(!debts.existsByTrajetId(id))debts.save(new DetteTrajet(trip));
+     journal.record(SensitiveOperationJournal.Action.TRAJET_CONVERTI_PUBLIC,null,SensitiveOperationJournal.Resource.TRAJET,id);
+     if(!debts.existsByTrajetId(id)){
+      var debt=debts.saveAndFlush(new DetteTrajet(trip));
+      journal.record(SensitiveOperationJournal.Action.DETTE_CREEE,null,SensitiveOperationJournal.Resource.DETTE,debt.getId());
+     }
      return true;
     });
     if(Boolean.TRUE.equals(changed))processed++;
