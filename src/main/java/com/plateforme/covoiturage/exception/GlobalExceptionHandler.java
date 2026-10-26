@@ -15,7 +15,31 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.Instant;
 
 @RestControllerAdvice
+@lombok.extern.slf4j.Slf4j
 public class GlobalExceptionHandler {
+    /** Le détail d'une exception/cause ne constitue jamais un message public ou une trace sûre. */
+    @ExceptionHandler(Exception.class)
+    ResponseEntity<ApiErrorResponse> unexpected(Exception failure, HttpServletRequest request) {
+        var protocol = failure instanceof org.springframework.web.ErrorResponse error ? error : null;
+        int status = protocol == null ? 500 : protocol.getStatusCode().value();
+        var response = ResponseEntity.status(status).cacheControl(org.springframework.http.CacheControl.noStore());
+        if (protocol != null) {
+            // Conserver les indications HTTP nécessaires sans recopier des en-têtes sensibles.
+            for (String name : java.util.List.of("Allow", "Accept", "Accept-Patch", "Retry-After")) {
+                var values = protocol.getHeaders().get(name);
+                if (values != null) response.header(name, values.toArray(String[]::new));
+            }
+        }
+        if (status >= 500) {
+            String reference = java.util.UUID.randomUUID().toString();
+            log.error("erreur_interne reference={} type={}", reference, failure.getClass().getName());
+            return response.header("X-Error-Id", reference).body(ApiErrorResponse.of(status,
+                    "INTERNAL_ERROR", "Erreur interne", request.getRequestURI()));
+        }
+        return response.body(ApiErrorResponse.of(status, "HTTP_ERROR",
+                "Requête incompatible avec le protocole HTTP", request.getRequestURI()));
+    }
+
     @ExceptionHandler(BindException.class)
     ResponseEntity<ApiErrorResponse> validation(BindException ex, HttpServletRequest request) {
         var errors = ex.getBindingResult().getFieldErrors().stream()
