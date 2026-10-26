@@ -63,7 +63,7 @@ public class SecurityConfiguration {
         var cors = new CorsConfiguration();
         cors.setAllowedOrigins(Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key"));
         cors.setAllowCredentials(false);
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", cors);

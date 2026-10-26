@@ -24,7 +24,8 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@TestPropertySource(properties="driveconnect.scheduling.j1.enabled=false")
+@TestPropertySource(properties={"driveconnect.scheduling.j1.enabled=false",
+ "driveconnect.security.cors.allowed-origins=http://localhost:4200"})
 class PaymentIntegrationTests extends JourneyIntegrationSupport {
  @MockitoBean PaymentGateway gateway;
  @Autowired PaiementPlaceRepository seatPayments;
@@ -40,8 +41,12 @@ class PaymentIntegrationTests extends JourneyIntegrationSupport {
   });
  }
  HttpResponse<String> pay(String path,Compte actor,UUID key,Object body)throws Exception{
+  return pay(path,actor,key,body,null);
+ }
+ HttpResponse<String> pay(String path,Compte actor,UUID key,Object body,String origin)throws Exception{
   var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+path))
    .header("Content-Type","application/json");
+  if(origin!=null)request.header("Origin",origin);
   if(key!=null)request.header("Idempotency-Key",key.toString());
   if(actor!=null)request.header("Authorization","Bearer "+new TokenService(encoder,jwtProperties,Clock.systemUTC()).issue(actor.getId()).accessToken());
   return http.send(request.POST(HttpRequest.BodyPublishers.ofString(body==null?"":json.writeValueAsString(body))).build(),HttpResponse.BodyHandlers.ofString());
@@ -347,5 +352,69 @@ class PaymentIntegrationTests extends JourneyIntegrationSupport {
   var response=call("GET","/v3/api-docs",null,null);
   assertThat(response.body()).contains("SIMULATION");
   assertThat(read(response).path("paths").path("/api/dettes/{id}/paiements").has("post")).isTrue();
+ }
+
+ private static final String ANGULAR_ORIGIN="http://localhost:4200";
+ HttpResponse<String> preflight(String path,String origin,String headers)throws Exception{
+  return http.send(HttpRequest.newBuilder(URI.create("http://localhost:"+port+path))
+   .header("Origin",origin).header("Access-Control-Request-Method","POST")
+   .header("Access-Control-Request-Headers",headers)
+   .method("OPTIONS",HttpRequest.BodyPublishers.noBody()).build(),HttpResponse.BodyHandlers.ofString());
+ }
+ String paymentPath(String kind,long id){return kind.equals("PLACE")?seat(id):debt(id);}
+ long paymentTarget(String kind)throws Exception{
+  return kind.equals("PLACE")?booking(create(local,TypeTrajet.PUBLIC),local):generateDebt();
+ }
+ Object paymentBody(String kind){return kind.equals("PLACE")?null:Map.of("montant",20);}
+
+ @ParameterizedTest @ValueSource(strings={"PLACE","DETTE"})
+ void paymentPreflightExplicitlyAllowsTheIdempotencyHeader(String kind)throws Exception{
+  var response=preflight(paymentPath(kind,1),ANGULAR_ORIGIN,"authorization,content-type,idempotency-key");
+  assertThat(response.statusCode()).isEqualTo(200);
+  assertThat(response.headers().firstValue("Access-Control-Allow-Origin")).contains(ANGULAR_ORIGIN);
+  assertThat(response.headers().firstValue("Access-Control-Allow-Headers").orElseThrow().toLowerCase(Locale.ROOT))
+   .contains("authorization","content-type","idempotency-key");
+  assertThat(response.headers().firstValue("Access-Control-Allow-Methods").orElseThrow()).contains("POST");
+  assertThat(response.headers().firstValue("Access-Control-Allow-Credentials")).isEmpty();
+ }
+ @ParameterizedTest @ValueSource(strings={"PLACE","DETTE"})
+ void authenticatedAngularPaymentsAndReplaysKeepTheExistingContract(String kind)throws Exception{
+  long id=paymentTarget(kind);String path=paymentPath(kind,id);UUID key=UUID.randomUUID();
+  var first=pay(path,local,key,paymentBody(kind),ANGULAR_ORIGIN);
+  var replay=pay(path,local,key,paymentBody(kind),ANGULAR_ORIGIN);
+  assertThat(first.statusCode()).isEqualTo(200);assertThat(replay.statusCode()).isEqualTo(200);
+  assertThat(first.headers().firstValue("Access-Control-Allow-Origin")).contains(ANGULAR_ORIGIN);
+  assertThat(read(first).path("paiementId").asLong()).isEqualTo(read(replay).path("paiementId").asLong());
+  assertThat(read(first).path("montant").decimalValue()).isEqualByComparingTo("20.00");
+  verify(gateway,times(1)).validate(eq(key),any());
+ }
+ @ParameterizedTest @ValueSource(strings={"PLACE","DETTE"})
+ void allowingCorsDoesNotRemoveAuthenticationOrRoleChecks(String kind)throws Exception{
+  long id=paymentTarget(kind);String path=paymentPath(kind,id);Object body=paymentBody(kind);
+  assertThat(pay(path,null,UUID.randomUUID(),body,ANGULAR_ORIGIN).statusCode()).isEqualTo(401);
+  assertThat(pay(path,global,UUID.randomUUID(),body,ANGULAR_ORIGIN).statusCode()).isEqualTo(403);
+  var invalid=HttpRequest.newBuilder(URI.create("http://localhost:"+port+path))
+   .header("Origin",ANGULAR_ORIGIN).header("Authorization","Bearer invalid.jwt.token")
+   .header("Content-Type","application/json").header("Idempotency-Key",UUID.randomUUID().toString())
+   .POST(HttpRequest.BodyPublishers.ofString(body==null?"":json.writeValueAsString(body))).build();
+  assertThat(http.send(invalid,HttpResponse.BodyHandlers.ofString()).statusCode()).isEqualTo(401);
+  verify(gateway,never()).validate(any(),any());
+ }
+ @ParameterizedTest @ValueSource(strings={"PLACE","DETTE"})
+ void unauthorizedOriginsCannotPreflightOrSubmitAuthenticatedPayments(String kind)throws Exception{
+  long id=paymentTarget(kind);String path=paymentPath(kind,id);String denied="http://untrusted.test";
+  var options=preflight(path,denied,"authorization,content-type,idempotency-key");
+  var post=pay(path,local,UUID.randomUUID(),paymentBody(kind),denied);
+  assertThat(options.statusCode()).isEqualTo(403);assertThat(post.statusCode()).isEqualTo(403);
+  assertThat(options.headers().firstValue("Access-Control-Allow-Origin")).isEmpty();
+  assertThat(post.headers().firstValue("Access-Control-Allow-Origin")).isEmpty();
+  verify(gateway,never()).validate(any(),any());
+  assertThat(seatPayments.count()).isZero();assertThat(debtPayments.count()).isZero();
+ }
+ @ParameterizedTest @ValueSource(strings={"PLACE","DETTE"})
+ void paymentCorsPolicyStillRejectsUnlistedHeaders(String kind)throws Exception{
+  var response=preflight(paymentPath(kind,1),ANGULAR_ORIGIN,"X-Privilege-Override");
+  assertThat(response.statusCode()).isEqualTo(403);
+  assertThat(response.headers().firstValue("Access-Control-Allow-Origin")).isEmpty();
  }
 }
