@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.Instant;
 
-/** Persistance uniquement ; les parcours de mutation restent à arbitrer. */
+/** Période à cible fixe ; modification des dates sans transfert implicite. */
 @Entity
 @Table(name="indisponibilite")
 @Getter
@@ -34,4 +34,5 @@ public class Indisponibilite {
     public static Indisponibilite pourVehicule(Vehicule vehicule, Instant debut, Instant fin) {
         return new Indisponibilite(null,java.util.Objects.requireNonNull(vehicule),debut,fin);
     }
+    public void configure(Instant debut, Instant fin) { this.debut=debut; this.fin=fin; }
 }

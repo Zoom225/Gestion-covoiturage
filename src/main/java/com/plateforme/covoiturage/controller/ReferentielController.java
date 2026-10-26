@@ -19,12 +19,13 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@Tag(name="Référentiels",description="Consultation administrative des zones, véhicules et périodes")
+@Tag(name="Référentiels",description="Consultation et gestion administrative des zones, véhicules et périodes")
 @SecurityRequirement(name="bearerJwt")
 @ApiResponse(responseCode="400",description="Paramètre invalide",content=@Content(schema=@Schema(implementation=ApiErrorResponse.class)))
 @ApiResponse(responseCode="401",description="Authentification requise",content=@Content(schema=@Schema(implementation=ApiErrorResponse.class)))
 @ApiResponse(responseCode="403",description="Permission administrative requise",content=@Content(schema=@Schema(implementation=ApiErrorResponse.class)))
 @ApiResponse(responseCode="404",description="Ressource absente ou invisible",content=@Content(schema=@Schema(implementation=ApiErrorResponse.class)))
+@ApiResponse(responseCode="409",description="Conflit métier ou intégrité",content=@Content(schema=@Schema(implementation=ApiErrorResponse.class)))
 public class ReferentielController {
     private final ReferentielService service;
 
@@ -83,6 +84,42 @@ public class ReferentielController {
     public ResponseEntity<ZoneResponse> zone(
             @Parameter(hidden=true) Authentication actor,@Positive @PathVariable Long id) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.zone(actor,id));
+    }
+
+    @PostMapping("/vehicules")
+    @Operation(summary="Créer un véhicule dans une zone autorisée",description="GLOBAL réseau, LOCAL sa zone. Véhicule actif à la création ; aucun transfert ni propriétaire CLIENT.")
+    @ApiResponse(responseCode="201",description="Véhicule créé")
+    public ResponseEntity<VehiculeResponse> createVehicle(@Parameter(hidden=true) Authentication actor,
+            @Valid @RequestBody com.plateforme.covoiturage.dto.request.CreateVehiculeRequest request) {
+        var result=service.createVehicle(actor,request);
+        return ResponseEntity.created(java.net.URI.create("/api/admin/vehicules/"+result.vehiculeId()))
+            .cacheControl(CacheControl.noStore()).body(result);
+    }
+    @PatchMapping("/vehicules/{id}/statut")
+    @Operation(summary="Activer ou désactiver un véhicule",description="GLOBAL réseau, LOCAL sa zone. La désactivation interdit les nouvelles planifications sans annuler les trajets existants.")
+    public ResponseEntity<VehiculeResponse> vehicleStatus(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id,
+            @Valid @RequestBody com.plateforme.covoiturage.dto.request.VehiculeStatusRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.vehicleStatus(actor,id,request.actif()));
+    }
+    @PostMapping("/indisponibilites")
+    @Operation(summary="Créer une indisponibilité de zone ou véhicule",description="Cible exclusive dans le périmètre administratif ; intervalle UTC [début,fin), rejet si un trajet existant est touché.")
+    @ApiResponse(responseCode="201",description="Indisponibilité créée")
+    public ResponseEntity<IndisponibiliteResponse> createPeriod(@Parameter(hidden=true) Authentication actor,
+            @Valid @RequestBody com.plateforme.covoiturage.dto.request.IndisponibiliteWriteRequest request) {
+        var result=service.createPeriod(actor,request);
+        return ResponseEntity.created(java.net.URI.create("/api/admin/indisponibilites/"+result.indisponibiliteId()))
+            .cacheControl(CacheControl.noStore()).body(result);
+    }
+    @PutMapping("/indisponibilites/{id}")
+    @Operation(summary="Modifier les dates d'une indisponibilité",description="Cible conservée ; GLOBAL réseau, LOCAL sa zone ; rejet si conflit avec un trajet existant.")
+    public ResponseEntity<IndisponibiliteResponse> updatePeriod(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id,
+            @Valid @RequestBody com.plateforme.covoiturage.dto.request.IndisponibiliteWriteRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.updatePeriod(actor,id,request));
+    }
+    @DeleteMapping("/indisponibilites/{id}")
+    @Operation(summary="Retirer une indisponibilité dans son périmètre",description="Aucune suppression de véhicule, trajet, paiement ou dette.")
+    public ResponseEntity<Void> deletePeriod(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id) {
+        service.deletePeriod(actor,id);return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/vehicules")

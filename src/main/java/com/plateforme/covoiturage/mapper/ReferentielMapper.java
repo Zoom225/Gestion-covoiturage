@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class ReferentielMapper {
     public ZoneResponse zone(Zone zone) { return new ZoneResponse(zone.getId(),zone.getNom(),zone.isActif(),zone.getFuseauHoraire(),zone.isOuverteOccasionnels()); }
     public VehiculeResponse vehicule(Vehicule vehicule) {
-        return new VehiculeResponse(vehicule.getId(),vehicule.getZone().getId(),vehicule.getZone().getNom());
+        return new VehiculeResponse(vehicule.getId(),vehicule.getZone().getId(),vehicule.getZone().getNom(),vehicule.isActif());
     }
     public IndisponibiliteResponse indisponibilite(Indisponibilite period) {
         return new IndisponibiliteResponse(period.getId(),period.getZone()==null?null:period.getZone().getId(),

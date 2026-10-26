@@ -15,7 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Consultation des référentiels ; aucun droit de mutation n'est déduit du droit de lecture. */
+/** Référentiels et mutations explicitement autorisées, périmètre GLOBAL/LOCAL contrôlé côté serveur. */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly=true)
@@ -30,6 +30,8 @@ public class ReferentielService {
     private final com.plateforme.covoiturage.security.ClientAuthorization clientAuthorization;
     private final TrajetRepository trips;
     private final SensitiveOperationJournal journal;
+    private final JourneyLocks locks;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public AdminStatisticsResponse statistics(Authentication actor,Long zoneId){
         var p=trips.statistics(authorization.requireZoneScope(actor),zoneId);
@@ -127,6 +129,95 @@ public class ReferentielService {
         Long scope=authorization.requireZoneScope(actor);
         return mapper.indisponibilite(indisponibilites.findOne(periodScope(scope).and(id(id)))
                 .orElseThrow(ResourceNotFoundException::new));
+    }
+
+    /** Mutations validées le 26 octobre : mêmes périmètres que les lectures. */
+    @Transactional
+    public VehiculeResponse createVehicle(Authentication actor,com.plateforme.covoiturage.dto.request.CreateVehiculeRequest request) {
+        zone(actor,request.zoneId()); // visibilité filtrée en SQL avant verrou
+        var zone=locks.zone(request.zoneId());
+        var vehicle=vehicules.saveAndFlush(new Vehicule(zone));
+        journal.record(SensitiveOperationJournal.Action.VEHICULE_CREE,actor,SensitiveOperationJournal.Resource.VEHICULE,vehicle.getId());
+        return mapper.vehicule(vehicle);
+    }
+
+    @Transactional
+    public VehiculeResponse vehicleStatus(Authentication actor,long id,boolean active) {
+        var visible=vehicule(actor,id);
+        locks.zone(visible.zoneId());
+        var vehicle=locks.vehicle(id);
+        if(!vehicle.getZone().getId().equals(visible.zoneId()))
+            throw new com.plateforme.covoiturage.exception.BusinessRuleException("RESOURCE_CHANGED");
+        if(vehicle.isActif()!=active) {
+            vehicle.setActif(active);
+            journal.record(active?SensitiveOperationJournal.Action.VEHICULE_ACTIVE:SensitiveOperationJournal.Action.VEHICULE_DESACTIVE,
+                actor,SensitiveOperationJournal.Resource.VEHICULE,id);
+        }
+        return mapper.vehicule(vehicle);
+    }
+
+    @Transactional
+    public IndisponibiliteResponse createPeriod(Authentication actor,com.plateforme.covoiturage.dto.request.IndisponibiliteWriteRequest request) {
+        validatePeriod(request);
+        Long vehicleId=request.vehiculeId();
+        long zoneId=vehicleId==null?request.zoneId():vehicule(actor,vehicleId).zoneId();
+        zone(actor,zoneId);
+        var zone=locks.zone(zoneId);
+        var vehicle=vehicleId==null?null:locks.vehicle(vehicleId);
+        if(vehicle!=null&&!vehicle.getZone().getId().equals(zoneId))
+            throw new com.plateforme.covoiturage.exception.BusinessRuleException("RESOURCE_CHANGED");
+        requireNoTrip(zoneId,vehicleId,request.debut(),request.fin());
+        var period=indisponibilites.saveAndFlush(vehicle==null
+            ?Indisponibilite.pourZone(zone,request.debut(),request.fin())
+            :Indisponibilite.pourVehicule(vehicle,request.debut(),request.fin()));
+        journal.record(SensitiveOperationJournal.Action.INDISPONIBILITE_CREEE,actor,SensitiveOperationJournal.Resource.INDISPONIBILITE,period.getId());
+        return mapper.indisponibilite(period);
+    }
+
+    @Transactional
+    public IndisponibiliteResponse updatePeriod(Authentication actor,long id,com.plateforme.covoiturage.dto.request.IndisponibiliteWriteRequest request) {
+        validatePeriod(request);
+        var period=managedPeriod(actor,id);
+        if(!java.util.Objects.equals(request.zoneId(),period.getZone()==null?null:period.getZone().getId())
+            ||!java.util.Objects.equals(request.vehiculeId(),period.getVehicule()==null?null:period.getVehicule().getId()))
+            throw new com.plateforme.covoiturage.exception.BusinessRuleException("UNAVAILABILITY_TARGET_IMMUTABLE");
+        long zoneId=period.getZone()!=null?period.getZone().getId():period.getVehicule().getZone().getId();
+        requireNoTrip(zoneId,request.vehiculeId(),request.debut(),request.fin());
+        period.configure(request.debut(),request.fin());
+        indisponibilites.flush();
+        journal.record(SensitiveOperationJournal.Action.INDISPONIBILITE_MODIFIEE,actor,SensitiveOperationJournal.Resource.INDISPONIBILITE,id);
+        return mapper.indisponibilite(period);
+    }
+
+    @Transactional
+    public void deletePeriod(Authentication actor,long id) {
+        var period=managedPeriod(actor,id);
+        indisponibilites.delete(period);
+        indisponibilites.flush();
+        journal.record(SensitiveOperationJournal.Action.INDISPONIBILITE_SUPPRIMEE,actor,SensitiveOperationJournal.Resource.INDISPONIBILITE,id);
+    }
+
+    private Indisponibilite managedPeriod(Authentication actor,long id) {
+        var visible=indisponibilite(actor,id);
+        long zoneId=visible.zoneId()!=null?visible.zoneId():vehicule(actor,visible.vehiculeId()).zoneId();
+        locks.zone(zoneId);
+        if(visible.vehiculeId()!=null) locks.vehicle(visible.vehiculeId());
+        indisponibilites.lock(id).orElseThrow(ResourceNotFoundException::new);
+        var period=indisponibilites.findById(id).orElseThrow(ResourceNotFoundException::new);
+        entityManager.refresh(period);
+        if(!java.util.Objects.equals(visible.zoneId(),period.getZone()==null?null:period.getZone().getId())
+            ||!java.util.Objects.equals(visible.vehiculeId(),period.getVehicule()==null?null:period.getVehicule().getId())
+            ||(period.getVehicule()!=null&&!period.getVehicule().getZone().getId().equals(zoneId)))
+            throw new com.plateforme.covoiturage.exception.BusinessRuleException("RESOURCE_CHANGED");
+        return period;
+    }
+    private void validatePeriod(com.plateforme.covoiturage.dto.request.IndisponibiliteWriteRequest request) {
+        if(!request.isCibleValide()||request.debut()==null||request.fin()==null||!request.isPeriodeValide())
+            throw new com.plateforme.covoiturage.exception.BusinessRuleException("INVALID_INTERVAL");
+    }
+    private void requireNoTrip(long zoneId,Long vehicleId,java.time.Instant start,java.time.Instant end) {
+        if(trips.resourceOverlaps(zoneId,vehicleId,start,end))
+            throw new com.plateforme.covoiturage.exception.BusinessRuleException("RESOURCE_HAS_TRIP");
     }
 
     private Pageable pageable(ReferencePageRequest page) {

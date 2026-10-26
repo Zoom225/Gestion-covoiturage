@@ -8,6 +8,8 @@ import java.util.Optional;
 
 public interface IndisponibiliteRepository extends JpaRepository<Indisponibilite,Long>,
         JpaSpecificationExecutor<Indisponibilite> {
+    @Query(value="select id from indisponibilite where id=?1 for update",nativeQuery=true)
+    Optional<Long> lock(long id);
     @Query("select (count(p)>0) from Indisponibilite p where (p.zone.id=:zone or p.vehicule.id=:vehicle) and p.debut<:end and p.fin>:start")
     boolean overlaps(@org.springframework.data.repository.query.Param("zone") long zone,
         @org.springframework.data.repository.query.Param("vehicle") long vehicle,
