@@ -99,7 +99,8 @@ abstract class JourneyIntegrationSupport {
  }
  JsonNode read(HttpResponse<String> response){return json.readTree(response.body());}
  Map<String,Object> request(Instant start,Instant end,TypeTrajet type){
-  return Map.of("zoneId",home.getId(),"vehiculeId",vehicle.getId(),"depart",start.toString(),"arrivee",end.toString(),"type",type);
+  return Map.of("zoneId",home.getId(),"vehiculeId",vehicle.getId(),"depart",start.toString(),"arrivee",end.toString(),"type",type,
+   "origine","Gare de Bruxelles-Midi","destination","Gare de Liège-Guillemins");
  }
  long create(Compte actor,TypeTrajet type)throws Exception{
   var result=call("POST","/api/trajets",actor,request(NOW.plusSeconds(172800),NOW.plusSeconds(176400),type));

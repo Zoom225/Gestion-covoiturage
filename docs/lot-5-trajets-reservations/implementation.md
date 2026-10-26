@@ -10,7 +10,7 @@ Tous ces endpoints exigent un CLIENT authentifié et actif. Identité issue du J
 
 | Opération | Contrat |
 |---|---|
-| POST /api/trajets | zoneId, vehiculeId, depart/arrivee ISO-8601 avec décalage, type PUBLIC/PRIVE ; 201, organisateur déduit et sa réservation EN_ATTENTE créée atomiquement |
+| POST /api/trajets | zoneId, vehiculeId, depart/arrivee ISO-8601 avec décalage, type PUBLIC/PRIVE, origine et destination géographiques ; 201, organisateur déduit et sa réservation EN_ATTENTE créée atomiquement |
 | GET /api/trajets | page 0, size 20/100, ID croissant, zoneId facultatif intersecté ; publics dans zones autorisées et privés dont on est participant, avant pagination et total |
 | GET /api/trajets/{id} | Même 404 pour absent ou invisible |
 | POST /api/trajets/{id}/reservations | Demande personnelle publique, sans clientId et sans confirmation |
@@ -20,6 +20,12 @@ Tous ces endpoints exigent un CLIENT authentifié et actif. Identité issue du J
 400 : entrée mal formée, dates égales/inversées ; 401 : JWT absent/invalide ou compte inactif ;
 403 : rôle, zone ou propriété non autorisés ; 404 : ressource introuvable/invisible ;
 409 : horizon, dette ACTIVE, doublon, indisponibilité, véhicule incompatible ou trajet fermé.
+
+Complément #33 : origine et destination sont deux libellés obligatoires de 255 caractères
+maximum après retrait des espaces périphériques. Création, liste et détail les retournent ;
+depart/arrivee restent des horaires UTC. Les lieux historiques inconnus restent null.
+La [finalisation géographique](../trajets-geographiques/implementation.md) décrit V14,
+la compatibilité des clients API, les sources et les preuves de validation.
 
 ## Règles et concurrence
 
