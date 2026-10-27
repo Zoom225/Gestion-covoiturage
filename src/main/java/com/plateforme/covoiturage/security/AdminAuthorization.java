@@ -10,6 +10,9 @@ import org.springframework.stereotype.Component;
 @Component("adminAuthorization")
 public class AdminAuthorization {
     // Conserve le contrat historique des opérations portant sur une zone non nulle.
+    /**
+     * Vérifie qu'un administrateur GLOBAL ou LOCAL gère la zone non nulle demandée sans étendre le périmètre LOCAL.
+     */
     public boolean canManageZone(Authentication authentication, Long resourceZoneId) {
         var profile = adminProfile(authentication);
         return profile != null && resourceZoneId != null
@@ -18,15 +21,15 @@ public class AdminAuthorization {
     }
 
     /**
-     * Périmètre de consultation des comptes : null signifie GLOBAL réseau ;
-     * une zone signifie exclusivement les comptes CLIENT de cette zone.
-     * Aucun autre profil n'obtient de périmètre.
+     * Réserve à GLOBAL tout le réseau et à LOCAL les seuls comptes CLIENT de sa zone, sans périmètre pour les autres profils.
      */
     public Long requireAccountReadZone(Authentication authentication) {
         return requireZoneScope(authentication);
     }
 
-    /** Périmètre administratif commun, utilisé par les comptes et référentiels en lecture. */
+    /**
+     * Exige un administrateur de périmètre cohérent ; null représente GLOBAL, un identifiant la seule zone LOCAL autorisée.
+     */
     public Long requireZoneScope(Authentication authentication) {
         var profile = adminProfile(authentication);
         if (profile != null) {
@@ -41,7 +44,9 @@ public class AdminAuthorization {
     }
 
 
-    /** Création : GLOBAL réseau ; LOCAL uniquement LOCAL dans sa zone, sans habilitation supplémentaire. */
+    /**
+     * Autorise GLOBAL sur le réseau et LOCAL uniquement pour créer un client LOCAL dans sa propre zone.
+     */
     public void requireClientCreation(Authentication actor,
             com.plateforme.covoiturage.enums.CategorieClient category, Long zoneId) {
         Long scope = requireAccountReadZone(actor);
@@ -49,11 +54,16 @@ public class AdminAuthorization {
                 || !scope.equals(zoneId))) throw new AccessDeniedException("Accès interdit");
     }
 
+    /**
+     * Refuse toute opération réservée à l'administration GLOBAL à un acteur LOCAL ou non administrateur.
+     */
     public void requireGlobal(Authentication actor) {
         if (requireAccountReadZone(actor) != null) throw new AccessDeniedException("Accès interdit");
     }
 
-    /** Même droit que la création ; le service a déjà filtré la visibilité en SQL. */
+    /**
+     * Applique au renouvellement d'invitation les droits de création de sa cible, après filtrage de visibilité par le service.
+     */
     public void requireInvitationManagement(Authentication actor, com.plateforme.covoiturage.entity.Compte target) {
         if (target.getRole() == RoleTechnique.ADMIN) {
             requireGlobal(actor);

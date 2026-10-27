@@ -8,6 +8,9 @@ import java.util.UUID;
 @Component @RequiredArgsConstructor
 public class ConfiguredPaymentGateway implements PaymentGateway {
  private final Environment environment;
+ /**
+  * N'autorise la simulation de paiement que si elle est explicitement activée en dev sans profil prod ; ne simule aucune intégration bancaire réelle.
+  */
  @Override public Mode validate(UUID operation,BigDecimal amount){
   if(!environment.acceptsProfiles(Profiles.of("dev & !prod"))
     || !environment.getProperty("driveconnect.payments.simulation-enabled",Boolean.class,false))

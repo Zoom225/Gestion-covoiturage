@@ -12,6 +12,9 @@ public class BookingPolicy {
  private final DetteTrajetRepository debts;
  private final ReservationRepository reservations;
  private final Clock clock;
+ /**
+  * Vérifie les zones autorisées, l'absence de dette ACTIVE et l'ouverture J-30, J-10 ou J-3 selon la catégorie (RM05–08, RM36–38).
+  */
  public void eligible(Client client,Zone zone,Instant departure){
   zones.require(client,zone);
   if(debts.existsByClientIdAndStatut(client.getId(),"ACTIVE"))throw new BusinessRuleException("ACTIVE_DEBT");
@@ -22,10 +25,11 @@ public class BookingPolicy {
  }
  public static final int MAX_CONFIRMED=4;
  /**
-  * Preparatory guard only: returning does not authorize a trip cancellation.
-  * A future cancellation service must authenticate the organizer, take JourneyLocks
-  * and refresh the trip before calling this guard in the same transaction.
-  * Reservation cancellation and the automatic J-1 processing do not call it.
+  * Empêche de préparer l'annulation privée incomplète avant J-1 qui éviterait la dette de 80 EUR (décision de #26, PR #44).
+  * Le futur appelant doit authentifier l'organisateur, verrouiller et relire le trajet dans la transaction de mutation.
+  * Un retour normal ne donne aucun droit d'annulation ; aucun parcours actuel n'appelle cette garde.
+  * @param trip trajet persistant relu sous JourneyLocks
+  * @throws com.plateforme.covoiturage.exception.BusinessRuleException si l'annulation contournerait la dette prévue à J-1
   */
  public void requireCancellationPreservesJ1Debt(Trajet trip){
   if(trip.getType()!=TypeTrajet.PRIVE||trip.getStatut()!=StatutTrajet.PLANIFIE)return;
@@ -37,6 +41,11 @@ public class BookingPolicy {
     &&!debts.existsByTrajetId(trip.getId()))
    throw new BusinessRuleException("PRIVATE_CANCELLATION_AVOIDS_J1_DEBT");
  }
+ /**
+  * Vérifie que le trajet est PLANIFIE et compte moins de quatre réservations CONFIRMEE, sans garantir une place EN_ATTENTE (D4).
+  * @return nombre actuel de participants confirmés
+  * @throws com.plateforme.covoiturage.exception.BusinessRuleException si le trajet est fermé ou complet
+  */
  public long open(Trajet trip){
   if(trip.getStatut()!=StatutTrajet.PLANIFIE)throw new BusinessRuleException("TRIP_NOT_OPEN");
   long confirmed=reservations.countByTrajetIdAndStatut(trip.getId(),StatutReservation.CONFIRMEE);

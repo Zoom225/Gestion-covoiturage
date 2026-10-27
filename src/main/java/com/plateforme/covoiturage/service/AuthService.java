@@ -34,6 +34,9 @@ public class AuthService {
         this.dummyHash = passwords.encode(java.util.UUID.randomUUID().toString());
     }
 
+    /**
+     * Authentifie un compte à accès effectif avec BCrypt, sans distinguer publiquement un identifiant inconnu, un mauvais mot de passe ou un compte désactivé.
+     */
     public TokenResponse login(LoginRequest request) {
         // BCrypt limite les entrées à 72 octets, y compris pour les caractères Unicode.
         if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
@@ -48,6 +51,9 @@ public class AuthService {
         return tokens.issue(compte.getId());
     }
 
+    /**
+     * Relit le compte identifié par le sujet JWT et refuse les comptes ou clients sans accès effectif avant de restituer leurs droits actuels.
+     */
     public ComptePrincipal resolvePrincipal(String subject) {
         long id;
         try {
@@ -68,7 +74,9 @@ public class AuthService {
     }
 
 
-    /** Consommation et BCrypt atomiques ; politique de mot de passe DEC-COMPTES-006. */
+    /**
+     * Consomme la preuve et initialise atomiquement le mot de passe conforme à DEC-COMPTES-006, sans réactiver un compte ou client désactivé.
+     */
     @Transactional
     public void accepterInvitation(String jeton, String password) {
         if (password == null || password.isBlank() || password.codePointCount(0, password.length()) < 15

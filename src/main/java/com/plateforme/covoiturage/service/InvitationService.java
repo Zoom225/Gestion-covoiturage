@@ -48,22 +48,30 @@ public class InvitationService {
         }
     }
 
+    /**
+     * Émet une preuve d'invitation pour un compte encore INVITE sans remplacer implicitement une preuve ouverte.
+     */
     public InvitationEmise emettre(Long compteId) {
         return preparer(compteId, false);
     }
 
+    /**
+     * Révoque les preuves ouvertes puis émet une nouvelle invitation dans la même transaction verrouillée.
+     */
     public InvitationEmise renouveler(Long compteId) {
         return preparer(compteId, true);
     }
 
+    /**
+     * Verrouille le compte avant de révoquer ses invitations encore ouvertes sans modifier son état d'accès.
+     */
     public void revoquer(Long compteId) {
         comptes.verrouillerEtatPourInvitation(compteId).orElseThrow(ResourceNotFoundException::new);
         invitations.revoquerOuvertes(compteId, maintenant());
     }
 
     /**
-     * Consomme uniquement la preuve. Le futur parcours devra initialiser le mot de passe
-     * dans la même transaction englobante : AuthService porte ce parcours et ses contrôles.
+     * Consomme une seule preuve valide sous verrou pour un compte INVITE ; l'initialisation du mot de passe reste dans la transaction englobante d'AuthService.
      */
     public Long consommer(String jeton) {
         String empreinte = empreinte(jeton);
@@ -78,6 +86,9 @@ public class InvitationService {
         return compteId;
     }
 
+    /**
+     * Exige une durée explicite et un compte INVITE verrouillé avant de conserver uniquement l'empreinte d'une nouvelle preuve à expiration déterminée.
+     */
     private InvitationEmise preparer(Long compteId, boolean renouvellement) {
         // Hors dev, aucune durée implicite : l'exploitation doit configurer INVITATION_TTL.
         if (properties.ttl() == null) {
@@ -110,6 +121,9 @@ public class InvitationService {
         return clock.instant().truncatedTo(ChronoUnit.MICROS);
     }
 
+    /**
+     * Refuse un jeton absent, mal formé ou non canonique avant de calculer son empreinte, sans conserver le secret en clair.
+     */
     private String empreinte(String jeton) {
         if (jeton == null || !jeton.matches("[A-Za-z0-9_-]{43}")) throw new InvitationInvalideException();
         byte[] octets;

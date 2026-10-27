@@ -21,6 +21,9 @@ public class InvitationDeliveryService {
     private final DeliveryProperties properties;
     private final Clock clock;
 
+    /**
+     * Ajoute l'invitation chiffrée à l'outbox dans la transaction du compte, sans exposer son jeton au contrat REST.
+     */
     @Transactional(propagation = Propagation.MANDATORY)
     public void enqueue(String recipient, InvitationService.InvitationEmise invitation) {
         UUID id = UUID.randomUUID();
@@ -28,7 +31,9 @@ public class InvitationDeliveryService {
         outbox.insert(id, invitation.invitationId(), encrypted, clock.instant());
     }
 
-    /** Un message par transaction ; ordre de verrou compte puis outbox, comme le futur accepteur. */
+    /**
+     * Traite un seul envoi sous verrou compte puis outbox, annule un envoi devenu obsolète et planifie une reprise sans journaliser de secret en cas d'échec.
+     */
     @Transactional
     public boolean dispatchNext() {
         var candidate = outbox.next(clock.instant());

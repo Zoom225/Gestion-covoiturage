@@ -10,6 +10,9 @@ import java.time.Instant;
 @Service @RequiredArgsConstructor @Transactional(readOnly=true)
 public class AvailabilityService {
  private final IndisponibiliteRepository periods;
+ /**
+  * Refuse un intervalle invalide ou une indisponibilité de zone ou véhicule qui chevauche la période demandée (D2, RM19).
+  */
  public void requireAvailable(Vehicule vehicle,Instant start,Instant end) {
   if(start==null||end==null||!end.isAfter(start))throw new BusinessRuleException("INVALID_INTERVAL");
   if(periods.overlaps(vehicle.getZone().getId(),vehicle.getId(),start,end))

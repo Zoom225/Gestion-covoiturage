@@ -17,7 +17,12 @@ public class J1ProcessingService {
  private final TransactionTemplate transactions;
  private final Clock clock;
  private final SensitiveOperationJournal journal;
- /** Each candidate commits independently; retries and concurrent runs recheck under the trip lock. */
+ /**
+  * Convertit à J-1 les trajets privés PLANIFIE incomplets et crée une seule dette de 80 EUR pour chaque organisateur (D5, RM41–45).
+  * La borne incluse est 00:15 Europe/Brussels la veille du départ ; chaque candidat est relu sous verrou et validé dans sa propre transaction.
+  * Un candidat en échec reste à reprendre lors du rattrapage, sans validation partielle.
+  * @return nombre de trajets effectivement convertis pendant ce passage
+  */
  public int catchUp(){
   int processed=0;
   long after=0;

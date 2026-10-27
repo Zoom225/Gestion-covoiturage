@@ -25,6 +25,9 @@ public class TrajetService {
  private final ZoneAccessRepository zoneAccess;
  private final TrajetMapper mapper;
 
+ /**
+  * Crée un trajet éligible et la réservation EN_ATTENTE de l'organisateur après contrôle du véhicule, des indisponibilités et de la pause de quinze minutes (RM14, RM19–20, D2–D4).
+  */
  @Transactional
  public TrajetResponse create(Authentication actor,CreateTrajetRequest request){
   var requester=authorization.require(actor);
@@ -41,6 +44,9 @@ public class TrajetService {
   bookings.saveAndFlush(new Reservation(trip,client)); // logical first place, never confirmed here
   return mapper.trajet(trip);
  }
+ /**
+  * Liste uniquement les trajets publics autorisés et les trajets privés organisés ou rejoints par le client, avec filtrage avant pagination.
+  */
  public ReferencePageResponse<TrajetResponse> list(Authentication actor,ReferencePageRequest page,Long zoneId){
   var client=authorization.require(actor);
   List<Long> allowed=zoneAccess.allowedZones(client.getId());
@@ -56,6 +62,9 @@ public class TrajetService {
   };
   return ReferencePageResponse.from(trips.findAll(scope,PageRequest.of(page.page(),page.size(),Sort.by("id"))).map(mapper::trajet));
  }
+ /**
+  * Retourne un trajet visible dans une zone autorisée, sans révéler un trajet privé auquel le client n'a plus accès.
+  */
  public TrajetResponse detail(Authentication actor,long id){
   var client=authorization.require(actor);
   var trip=trips.findById(id).orElseThrow(ResourceNotFoundException::new);

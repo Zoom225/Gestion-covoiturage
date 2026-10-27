@@ -25,17 +25,25 @@ public class SensitiveOperationJournal {
     public enum Resource { PAIEMENT_PLACE, PAIEMENT_DETTE, RESERVATION, TRAJET, DETTE, ZONE, CLIENT, COMPTE, VEHICULE, INDISPONIBILITE }
     private final Clock clock;
 
+    /**
+     * Prépare la trace d'une opération sensible attribuée au compte courant, publiée uniquement après validation de la transaction.
+     */
     public void record(Action action, Authentication actor, Resource resource, long resourceId) {
         record(action,actor,resource,resourceId,null);
     }
 
+    /**
+     * Prépare la trace d'une opération sensible attribuée au compte courant, publiée uniquement après validation de la transaction.
+     */
     public void record(Action action, Authentication actor, Resource resource, long resourceId, Long relatedId) {
         Long actorId = actor != null && actor.getPrincipal() instanceof ComptePrincipal principal
                 ? principal.id() : null;
         recordByAccount(action,actorId,resource,resourceId,relatedId);
     }
 
-    /** Identité établie côté serveur, notamment après consommation d'une invitation. */
+    /**
+     * Journalise après commit une opération sensible avec une identité établie côté serveur, sans publier de trace après rollback.
+     */
     public void recordByAccount(Action action, Long actorId, Resource resource, long resourceId, Long relatedId) {
         if (!TransactionSynchronizationManager.isActualTransactionActive()
                 || !TransactionSynchronizationManager.isSynchronizationActive()) {
