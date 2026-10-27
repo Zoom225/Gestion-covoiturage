@@ -11,4 +11,6 @@ public class Reservation {
  public Reservation(Trajet trajet,Client client){this.trajet=trajet;this.client=client;}
  /** Called exclusively by the transactional payment service. */
  public void confirm(){statut=StatutReservation.CONFIRMEE;}
+ /** Historical row and its payment remain attached after cancellation. */
+ public void cancel(){statut=StatutReservation.ANNULEE;}
 }
