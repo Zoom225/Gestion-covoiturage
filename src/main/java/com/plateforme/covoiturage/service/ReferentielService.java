@@ -32,6 +32,21 @@ public class ReferentielService {
     private final SensitiveOperationJournal journal;
     private final JourneyLocks locks;
     private final jakarta.persistence.EntityManager entityManager;
+    private final ItineraireProposeRepository itineraires;
+
+    /**
+     * Consulte les références géographiques communes après vérification du client actif, sans créer de trajet
+     * ni accorder de droit sur une zone ; la création réelle conserve tous ses contrôles métier.
+     * @return page ordonnée de lieux proposés, recherchés avant pagination et comptage
+     */
+    public ReferencePageResponse<ItineraireProposeResponse> clientItineraires(Authentication actor,
+            ReferencePageRequest page, com.plateforme.covoiturage.dto.request.ItineraireSearchRequest search) {
+        clientAuthorization.require(actor);
+        return ReferencePageResponse.from(itineraires
+            .findByOrigineContainingIgnoreCaseAndDestinationContainingIgnoreCase(
+                search.origine(),search.destination(),pageable(page))
+            .map(route -> new ItineraireProposeResponse(route.getId(),route.getOrigine(),route.getDestination())));
+    }
 
     /**
      * Calcule les statistiques uniquement dans le périmètre GLOBAL ou LOCAL autorisé, avant agrégation et filtre facultatif de zone.
