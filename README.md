@@ -94,11 +94,16 @@ Sur Linux ou macOS :
 
 ## Compiler et tester
 
-Compilation :
+### Compilation du backend sous Windows (commande validée)
+
+Depuis PowerShell, exécuter :
 
 ```powershell
+cd C:\Users\user\IdeaProjects\Gestion-covoiturage
 .\mvnw.cmd -DskipTests compile
 ```
+
+Cette commande compile les sources Java sans exécuter les tests. Le résultat attendu est `BUILD SUCCESS`. **Elle ne démarre pas le serveur Spring Boot** et ne nécessite pas une connexion PostgreSQL pour la compilation habituelle. Pour démarrer l'application, utiliser ensuite la configuration IntelliJ `DriveConnect — dev` ou `.\scripts\dev-up.ps1 -Port 8081`, avec PostgreSQL disponible sur `127.0.0.1:15432` et les variables locales chargées.
 
 Tests et vérifications Maven :
 
