@@ -3,6 +3,7 @@ import com.plateforme.covoiturage.dto.request.ReferencePageRequest;
 import com.plateforme.covoiturage.dto.response.*;
 import com.plateforme.covoiturage.entity.*;
 import com.plateforme.covoiturage.enums.TypeTrajet;
+import com.plateforme.covoiturage.enums.StatutReservation;
 import com.plateforme.covoiturage.exception.*;
 import com.plateforme.covoiturage.mapper.TrajetMapper;
 import com.plateforme.covoiturage.repository.ReservationRepository;
@@ -39,7 +40,7 @@ public class ReservationService {
  private ReservationResponse pending(Trajet trip,Client client){
   policy.open(trip);policy.eligible(client,trip.getZone(),trip.getDepart());
   availability.requireAvailable(trip.getVehicule(),trip.getDepart(),trip.getArrivee());
-  if(bookings.existsByTrajetIdAndClientId(trip.getId(),client.getId()))
+  if(bookings.existsByTrajetIdAndClientIdAndStatutNot(trip.getId(),client.getId(),StatutReservation.ANNULEE))
    throw new BusinessRuleException("DUPLICATE_RESERVATION");
   return mapper.reservation(bookings.saveAndFlush(new Reservation(trip,client)));
  }
