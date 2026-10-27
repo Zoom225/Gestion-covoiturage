@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-carshare}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?carshare}
     ports:
-      - "127.0.0.1:5440:5432"
+      - "5440:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
