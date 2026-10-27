@@ -29,10 +29,10 @@ public class Trajet {
    throw new IllegalArgumentException("Un lieu geographique non vide de 255 caracteres maximum est requis");
   return value.strip();
  }
+ @Column(name="traite_j1_le") private Instant traiteJ1Le;
  /**
   * Change uniquement le type en PUBLIC sans annuler les réservations ni les preuves de paiement.
   */
- @Column(name="traite_j1_le") private Instant traiteJ1Le;
  public void becomePublic(){type=TypeTrajet.PUBLIC;}
  /**
   * Enregistre la conversion publique et sa date de traitement ; le service J-1 porte la vérification et la dette de 80 EUR (D5).

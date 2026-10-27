@@ -23,6 +23,16 @@ public class BookingPolicy {
   Instant opens=departure.atZone(ZoneId.of(zone.getFuseauHoraire())).minusDays(days).toInstant();
   if(!departure.isAfter(now)||now.isBefore(opens))throw new BusinessRuleException("BOOKING_HORIZON");
  }
+ /**
+  * Prépare uniquement la condition temporelle d'une future clôture en exigeant un instant strictement postérieur à l'arrivée.
+  * Un retour normal n'autorise ni acteur ni état source : le futur service devra valider ces règles, verrouiller et relire le trajet.
+  * Cette garde ne change aucun statut, ne déclenche pas REALISE et ne modifie aucune réservation, paiement ou dette.
+  * @param trip trajet dont l'arrivée enregistrée est relue par le futur appelant sous JourneyLocks
+  * @throws com.plateforme.covoiturage.exception.BusinessRuleException si l'heure d'arrivée n'est pas strictement dépassée
+  */
+ public void requireAfterArrivalForCompletion(Trajet trip){
+  if(!clock.instant().isAfter(trip.getArrivee()))throw new BusinessRuleException("TRIP_ARRIVAL_NOT_PASSED");
+ }
  public static final int MAX_CONFIRMED=4;
  /**
   * Empêche de préparer l'annulation privée incomplète avant J-1 qui éviterait la dette de 80 EUR (décision de #26, PR #44).
