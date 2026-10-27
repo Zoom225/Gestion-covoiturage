@@ -4,19 +4,46 @@ Backend Java Spring Boot de la plateforme de gestion d’un réseau de covoitura
 
 ## Démarrage local Windows — version récente
 
-Le [guide de développement local](docs/developpement-local.md) décrit le nouveau
-worktree, les fichiers privés, Docker Compose, IntelliJ et les vérifications Flyway.
-Configurer la référence privée une seule fois ; ne pas écraser un fichier existant.
+Le [guide de développement local](docs/developpement-local.md) décrit les fichiers
+privés, Docker Compose, IntelliJ et les vérifications Flyway. Utiliser la racine
+principale `C:\Users\user\IdeaProjects\Gestion-covoiturage`.
+
+Préparation initiale : restaurer dans cette racine le fichier privé `.env.local.ps1`
+contenant `DB_URL=jdbc:postgresql://127.0.0.1:15432/carshare`, `DB_USERNAME=carshare`,
+le `DB_PASSWORD` du volume existant et le `JWT_SECRET` local. Ne pas générer un
+nouveau mot de passe pour une base déjà initialisée et ne pas écraser un fichier
+privé existant. Ces fichiers privés ne doivent jamais être versionnés.
 
 ```powershell
 .\scripts\sync-compose-env.ps1
+```
+
+Ce script prépare le `.env` local que Compose charge automatiquement. Ne pas
+remplacer un `.env` personnalisé ; un `.env` existant ne fournit pas à lui seul
+le `JWT_SECRET` nécessaire au backend.
+
+**Méthode A — Docker puis IntelliJ**
+
+```powershell
 docker compose up -d
+```
+
+Dans IntelliJ, ouvrir la racine principale et lancer la configuration partagée
+**DriveConnect — dev** : profil `dev`, port HTTP 8081 et chargement des variables
+privées par `scripts/intellij-env.bat`. Ne pas démarrer une seconde instance si
+le port 8081 est occupé.
+
+**Méthode B — démarrage automatisé**
+
+```powershell
 .\scripts\dev-up.ps1 -Port 8081
 ```
 
-Pour les tests : `.\scripts\dev-test.ps1`. Dans IntelliJ, ouvrir le nouveau
-worktree et sélectionner la configuration partagée **DriveConnect — dev**
-sur le port 8081. Swagger expose les GET `/api/admin/comptes` et
+Choisir une seule méthode pour lancer le backend. Après démarrage, vérifier
+`http://127.0.0.1:8081/swagger-ui/index.html` et
+`http://127.0.0.1:8081/v3/api-docs`.
+
+Pour les tests : `.\scripts\dev-test.ps1`. Swagger expose les GET `/api/admin/comptes` et
 `/api/admin/comptes/{id}` ; leur utilisation reste protégée par JWT.
 
 ## Prérequis
@@ -379,7 +406,7 @@ Cas vérifiés et corrections :
 | Swagger retourne 401 hors `dev` | Politique volontaire. Activer uniquement `dev` pour un usage local ; la combinaison `dev,prod` laisse la documentation désactivée. |
 | `/api/auth/me` retourne 401 | Jeton absent, invalide, expiré ou compte indisponible. Se connecter avec un compte actif et renseigner le JWT via Authorize. |
 | Connexion retourne 400 | Corps JSON malformé ou champs invalides. Respecter le schéma affiché dans Swagger. |
-| Compose réclame `DB_PASSWORD` | Définir le mot de passe dans le terminal avant `docker compose up -d --wait`. |
+| Compose réclame `DB_PASSWORD` | Vérifier le `.env` local ; restaurer `.env.local.ps1`, puis lancer `.\scripts\sync-compose-env.ps1` sans changer le mot de passe du volume existant. |
 | Configuration JWT refusée | Les tests confirment le refus d'une clé absente, mal formée ou trop courte. Générer au moins 32 octets aléatoires, les encoder en Base64 et définir `JWT_SECRET`. |
 
 La clé JWT et le mot de passe PostgreSQL doivent être conservés dans un gestionnaire
