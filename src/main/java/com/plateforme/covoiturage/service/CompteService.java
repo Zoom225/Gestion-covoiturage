@@ -48,6 +48,9 @@ public class CompteService {
     private final Validator validator;
     private final SensitiveOperationJournal journal;
 
+    /**
+     * Crée un client invité et réserve son matricule dans le périmètre autorisé, avec contact et invitation transmis sans mot de passe public.
+     */
     @Transactional
     public CompteInvitationResponse createClient(Authentication actor, CreateClientRequest request) {
         validate(request);
@@ -65,6 +68,9 @@ public class CompteService {
         return result;
     }
 
+    /**
+     * Réserve à GLOBAL la création cohérente d'un administrateur invité, avec sérialisation de l'administration globale.
+     */
     @Transactional
     public CompteInvitationResponse createAdministrateur(Authentication actor, CreateAdministrateurRequest request) {
         authorization.requireGlobal(actor);
@@ -75,7 +81,9 @@ public class CompteService {
         return result;
     }
 
-    /** Appelé uniquement par le point d'entrée opérateur, jamais par un contrôleur. */
+    /**
+     * Crée le premier administrateur GLOBAL uniquement depuis l'entrée opérateur, après verrouillage et refus d'un GLOBAL déjà présent.
+     */
     @Transactional
     public void bootstrapGlobal(String email) {
         var request = new CreateAdministrateurRequest(email, PerimetreAdmin.GLOBAL, null);
@@ -88,6 +96,9 @@ public class CompteService {
         journal.record(SensitiveOperationJournal.Action.COMPTE_CREE,null,SensitiveOperationJournal.Resource.COMPTE,result.compte().compteId());
     }
 
+    /**
+     * Renouvelle l'invitation d'un compte invité actif et visible, en révoquant les preuves et envois précédents dans la même transaction.
+     */
     @Transactional
     public InvitationStatusResponse renewInvitation(Authentication actor, long id) {
         // Scope SQL avant toute divulgation ; invisible et absent ont le même 404.
@@ -107,6 +118,9 @@ public class CompteService {
         return new InvitationStatusResponse("PENDING", issued.expireA());
     }
 
+    /**
+     * Vérifie la cohérence GLOBAL sans zone ou LOCAL avec zone avant de créer un administrateur invité.
+     */
     private CompteInvitationResponse createAdmin(CreateAdministrateurRequest request) {
         if ((request.perimetreAdmin() == PerimetreAdmin.LOCAL) != (request.zoneAdminId() != null)) {
             throw new InvalidAccountRequestException();
@@ -118,6 +132,9 @@ public class CompteService {
         return createAndQueue(compte);
     }
 
+    /**
+     * Persiste le compte puis prépare sa preuve d'invitation et son envoi chiffré dans la même transaction.
+     */
     private CompteInvitationResponse createAndQueue(Compte compte) {
         comptes.saveAndFlush(compte);
         var issued = invitations.emettre(compte.getId());
@@ -133,11 +150,17 @@ public class CompteService {
         return email.toLowerCase(java.util.Locale.ROOT);
     }
 
+    /**
+     * Refuse une demande absente ou contraire aux contraintes déclarées avant toute écriture de compte.
+     */
     private void validate(Object request) {
         if (request == null || !validator.validate(request).isEmpty()) throw new InvalidAccountRequestException();
     }
 
 
+    /**
+     * Recherche les comptes uniquement dans le périmètre SQL autorisé, avant pagination, totaux et filtres demandés.
+     */
     public ComptePageResponse search(Authentication actor, CompteSearchRequest search) {
         var specification = withinScope(actor).and(filters(search));
         var page = comptes.findAll(specification,
@@ -146,6 +169,9 @@ public class CompteService {
                 page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages());
     }
 
+    /**
+     * Retourne un compte visible sans distinguer publiquement une absence d'une ressource située hors périmètre.
+     */
     public CompteAdministrationResponse findById(Authentication actor, long id) {
         var specification = withinScope(actor)
                 .and((root, query, builder) -> builder.equal(root.get("id"), id));
@@ -153,6 +179,9 @@ public class CompteService {
         return mapper.toResponse(comptes.findOne(specification).orElseThrow(ResourceNotFoundException::new));
     }
 
+    /**
+     * Limite les comptes lisibles à tout le réseau pour GLOBAL ou aux seuls clients de la zone LOCAL autorisée.
+     */
     private Specification<Compte> withinScope(Authentication actor) {
         Long zoneId = authorization.requireAccountReadZone(actor);
         return (root, query, builder) -> {
@@ -166,6 +195,9 @@ public class CompteService {
         };
     }
 
+    /**
+     * Combine les critères de recherche sans élargir le périmètre administratif, avec la même comparaison d'identifiant que l'authentification.
+     */
     private Specification<Compte> filters(CompteSearchRequest search) {
         return (root, query, builder) -> {
             var predicates = new ArrayList<Predicate>();

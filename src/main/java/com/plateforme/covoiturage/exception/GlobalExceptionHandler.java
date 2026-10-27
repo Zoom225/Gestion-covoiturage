@@ -52,7 +52,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.web.bind.ServletRequestBindingException.class)
     ResponseEntity<ApiErrorResponse> missingParameter(HttpServletRequest request){
         return ResponseEntity.badRequest().body(ApiErrorResponse.of(400,"INVALID_REQUEST",
-                "Parametre requis absent ou invalide",request.getRequestURI()));
+                "Paramètre requis absent ou invalide.",request.getRequestURI()));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -95,7 +95,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessRuleException.class)
     ResponseEntity<ApiErrorResponse> business(BusinessRuleException ex,HttpServletRequest request){
         return ResponseEntity.status(409).body(ApiErrorResponse.of(409,ex.getCode(),
-                "Operation incompatible avec les regles metier",request.getRequestURI()));
+                "Opération incompatible avec les règles métier.",request.getRequestURI()));
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)

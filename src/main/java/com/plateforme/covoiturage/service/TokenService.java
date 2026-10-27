@@ -18,6 +18,9 @@ public class TokenService {
     private final JwtProperties properties;
     private final Clock clock;
 
+    /**
+     * Émet pour le compte authentifié un JWT à durée, émetteur et audience configurés, sans y figer ses droits métier.
+     */
     public TokenResponse issue(Long compteId) {
         var now = clock.instant();
         var claims = JwtClaimsSet.builder().issuer(properties.issuer())

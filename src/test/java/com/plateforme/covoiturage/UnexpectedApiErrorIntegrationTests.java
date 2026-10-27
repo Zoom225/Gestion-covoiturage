@@ -83,6 +83,7 @@ class UnexpectedApiErrorIntegrationTests extends ReportingIntegrationSupport {
         when(gateway.validate(any(),any())).thenThrow(new BusinessRuleException("PAYMENT_REFUSED"));
         var response=pay(seat(booking(trip,local)),local,UUID.randomUUID(),null);
         assertThat(response.statusCode()).isEqualTo(409);assertThat(read(response).path("code").asText()).isEqualTo("PAYMENT_REFUSED");
+        assertThat(read(response).path("message").asText()).isEqualTo("Opération incompatible avec les règles métier.");
         assertThat(response.headers().firstValue("X-Error-Id")).isEmpty();assertThat(messages()).isEmpty();
     }
     @Test void knownProviderUnavailabilityStillUses503()throws Exception{
@@ -120,6 +121,25 @@ class UnexpectedApiErrorIntegrationTests extends ReportingIntegrationSupport {
                 .POST(HttpRequest.BodyPublishers.ofString("{")).build();
         var response=http.send(request,HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(400);assertThat(read(response).path("code").asText()).isEqualTo("INVALID_REQUEST");
+        assertThat(messages()).isEmpty();
+    }
+
+    @Test void validationRemainsFrenchForAnEnglishHttpClientWithoutChangingTheApiContract()throws Exception{
+        long accountCount=accounts.count();
+        var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/api/auth/login"))
+                .header("Accept-Language","en").header("Content-Type","application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"identifiant\":\" \",\"password\":\" \"}")).build();
+        var response=http.send(request,HttpResponse.BodyHandlers.ofString());
+        var error=read(response);
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(error.path("code").asText()).isEqualTo("VALIDATION_ERROR");
+        assertThat(error.path("message").asText()).isEqualTo("Données invalides");
+        assertThat(error.path("validationErrors").size()).isEqualTo(2);
+        for(var field:error.path("validationErrors")) {
+            assertThat(field.path("field").asText()).isIn("identifiant","password");
+            assertThat(field.path("message").asText()).isEqualTo("Ce champ ne doit pas être vide.");
+        }
+        assertThat(accounts.count()).isEqualTo(accountCount);
         assertThat(messages()).isEmpty();
     }
 }

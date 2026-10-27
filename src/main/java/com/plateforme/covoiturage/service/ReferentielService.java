@@ -33,6 +33,9 @@ public class ReferentielService {
     private final JourneyLocks locks;
     private final jakarta.persistence.EntityManager entityManager;
 
+    /**
+     * Calcule les statistiques uniquement dans le périmètre GLOBAL ou LOCAL autorisé, avant agrégation et filtre facultatif de zone.
+     */
     public AdminStatisticsResponse statistics(Authentication actor,Long zoneId){
         var p=trips.statistics(authorization.requireZoneScope(actor),zoneId);
         return new AdminStatisticsResponse(p.getTrajetsPlanifies(),p.getTrajetsComplets(),p.getTrajetsAnnules(),
@@ -40,12 +43,18 @@ public class ReferentielService {
             p.getPaiementsPlaces(),p.getPaiementsDettes(),p.getDettesRestantes());
     }
 
+    /**
+     * Liste avant pagination les seules zones auxquelles le client authentifié est autorisé à accéder (D3).
+     */
     public ReferencePageResponse<ZoneResponse> clientZones(Authentication actor,ReferencePageRequest page){
         var client=clientAuthorization.require(actor);
         var allowed=grants.allowedZones(client.getId());
         Specification<Zone> spec=(root,query,cb)->root.get("id").in(allowed);
         return ReferencePageResponse.from(zones.findAll(spec,pageable(page)).map(mapper::zone));
     }
+    /**
+     * Liste les véhicules des seules zones autorisées au client, sans élargissement par le filtre demandé.
+     */
     public ReferencePageResponse<VehiculeResponse> clientVehicles(Authentication actor,ReferencePageRequest page,Long zoneId){
         var client=clientAuthorization.require(actor);
         var allowed=grants.allowedZones(client.getId());
@@ -53,6 +62,9 @@ public class ReferentielService {
         return ReferencePageResponse.from(vehicules.findAll(spec.and(vehiculeScope(zoneId)),pageable(page)).map(mapper::vehicule));
     }
 
+    /**
+     * Réserve à GLOBAL la création d'une zone avec fuseau explicite et ouverture OCCASIONNEL configurée (D1–D3).
+     */
     @Transactional
     public ZoneResponse createZone(Authentication actor,com.plateforme.covoiturage.dto.request.ZoneWriteRequest request){
         authorization.requireGlobal(actor); validateTimezone(request.fuseauHoraire());
@@ -62,6 +74,9 @@ public class ReferentielService {
         journal.record(SensitiveOperationJournal.Action.ZONE_CREEE,actor,SensitiveOperationJournal.Resource.ZONE,zone.getId());
         return mapper.zone(zone);
     }
+    /**
+     * Reconfigure une zone sous verrou pour GLOBAL, après validation du fuseau, sans modifier les droits administratifs (D1).
+     */
     @Transactional
     public ZoneResponse updateZone(Authentication actor,long id,com.plateforme.covoiturage.dto.request.ZoneWriteRequest request){
         authorization.requireGlobal(actor);validateTimezone(request.fuseauHoraire());
@@ -70,6 +85,9 @@ public class ReferentielService {
         journal.record(SensitiveOperationJournal.Action.ZONE_CONFIGUREE,actor,SensitiveOperationJournal.Resource.ZONE,id);
         return mapper.zone(zone);
     }
+    /**
+     * Active ou désactive une zone de façon idempotente pour GLOBAL et journalise seulement un changement réel (D1).
+     */
     @Transactional
     public ZoneResponse zoneStatus(Authentication actor,long id,boolean active){
         authorization.requireGlobal(actor);
@@ -81,6 +99,9 @@ public class ReferentielService {
         }
         return mapper.zone(zone);
     }
+    /**
+     * Accorde ou retire idempotemment l'accès explicite d'un client VIP à une zone, uniquement pour GLOBAL (D3).
+     */
     @Transactional
     public void vipAccess(Authentication actor,long zoneId,long clientId,boolean allow){
         authorization.requireGlobal(actor);
@@ -93,29 +114,47 @@ public class ReferentielService {
         if(existed!=allow)journal.record(allow?SensitiveOperationJournal.Action.AUTORISATION_VIP_ACCORDEE:SensitiveOperationJournal.Action.AUTORISATION_VIP_RETIREE,
             actor,SensitiveOperationJournal.Resource.ZONE,zoneId,clientId);
     }
+    /**
+     * Exige un identifiant de fuseau IANA reconnu sans attribuer de fuseau implicite à une zone (D2).
+     */
     private void validateTimezone(String timezone){
         if(!java.time.ZoneId.getAvailableZoneIds().contains(timezone))
             throw new com.plateforme.covoiturage.exception.InvalidAccountRequestException();
     }
 
+    /**
+     * Liste les zones dans le périmètre administratif autorisé, avec filtrage SQL avant pagination (D1).
+     */
     public ReferencePageResponse<ZoneResponse> zones(Authentication actor,ReferencePageRequest page) {
         Long scope=authorization.requireZoneScope(actor);
         return ReferencePageResponse.from(zones.findAll(zoneScope(scope),pageable(page)).map(mapper::zone));
     }
+    /**
+     * Retourne une zone uniquement dans le périmètre administratif, en confondant ressource invisible et absente.
+     */
     public ZoneResponse zone(Authentication actor,long id) {
         Long scope=authorization.requireZoneScope(actor);
         return mapper.zone(zones.findOne(zoneScope(scope).and(id(id))).orElseThrow(ResourceNotFoundException::new));
     }
+    /**
+     * Liste les véhicules en combinant le périmètre administratif et le filtre de zone sans élargissement (RM49, RM51).
+     */
     public ReferencePageResponse<VehiculeResponse> vehicules(Authentication actor,ReferencePageRequest page,Long zoneId) {
         Long scope=authorization.requireZoneScope(actor);
         var spec=vehiculeScope(scope).and(vehiculeScope(zoneId));
         return ReferencePageResponse.from(vehicules.findAll(spec,pageable(page)).map(mapper::vehicule));
     }
+    /**
+     * Retourne un véhicule visible dans le périmètre administratif, sans divulgation hors zone LOCAL.
+     */
     public VehiculeResponse vehicule(Authentication actor,long id) {
         Long scope=authorization.requireZoneScope(actor);
         return mapper.vehicule(vehicules.findOne(vehiculeScope(scope).and(id(id)))
                 .orElseThrow(ResourceNotFoundException::new));
     }
+    /**
+     * Liste les indisponibilités dans le périmètre administratif avant pagination et comptage (RM49, RM51).
+     */
     public ReferencePageResponse<IndisponibiliteResponse> indisponibilites(Authentication actor,ReferencePageRequest page,
                                                                           Long zoneId,Long vehiculeId) {
         Long scope=authorization.requireZoneScope(actor);
@@ -125,13 +164,18 @@ public class ReferentielService {
         }
         return ReferencePageResponse.from(indisponibilites.findAll(spec,pageable(page)).map(mapper::indisponibilite));
     }
+    /**
+     * Retourne une indisponibilité visible dans le périmètre GLOBAL ou LOCAL autorisé.
+     */
     public IndisponibiliteResponse indisponibilite(Authentication actor,long id) {
         Long scope=authorization.requireZoneScope(actor);
         return mapper.indisponibilite(indisponibilites.findOne(periodScope(scope).and(id(id)))
                 .orElseThrow(ResourceNotFoundException::new));
     }
 
-    /** Mutations validées le 26 octobre : mêmes périmètres que les lectures. */
+    /**
+     * Crée un véhicule dans une zone administrativement autorisée sous verrou, sans propriété CLIENT ni transfert de zone inventé (#25).
+     */
     @Transactional
     public VehiculeResponse createVehicle(Authentication actor,com.plateforme.covoiturage.dto.request.CreateVehiculeRequest request) {
         zone(actor,request.zoneId()); // visibilité filtrée en SQL avant verrou
@@ -141,6 +185,9 @@ public class ReferentielService {
         return mapper.vehicule(vehicle);
     }
 
+    /**
+     * Active ou désactive idempotemment un véhicule autorisé sans annuler ses trajets existants (#25).
+     */
     @Transactional
     public VehiculeResponse vehicleStatus(Authentication actor,long id,boolean active) {
         var visible=vehicule(actor,id);
@@ -156,6 +203,9 @@ public class ReferentielService {
         return mapper.vehicule(vehicle);
     }
 
+    /**
+     * Crée une indisponibilité de zone ou véhicule autorisée sans conflit avec un trajet existant, sous les verrous partagés (#25).
+     */
     @Transactional
     public IndisponibiliteResponse createPeriod(Authentication actor,com.plateforme.covoiturage.dto.request.IndisponibiliteWriteRequest request) {
         validatePeriod(request);
@@ -174,6 +224,9 @@ public class ReferentielService {
         return mapper.indisponibilite(period);
     }
 
+    /**
+     * Modifie les dates d'une indisponibilité autorisée sans changer sa cible ni créer de conflit avec les trajets (#25).
+     */
     @Transactional
     public IndisponibiliteResponse updatePeriod(Authentication actor,long id,com.plateforme.covoiturage.dto.request.IndisponibiliteWriteRequest request) {
         validatePeriod(request);
@@ -189,6 +242,9 @@ public class ReferentielService {
         return mapper.indisponibilite(period);
     }
 
+    /**
+     * Retire uniquement une indisponibilité visible et verrouillée dans le périmètre administratif, sans supprimer de trajet (#25).
+     */
     @Transactional
     public void deletePeriod(Authentication actor,long id) {
         var period=managedPeriod(actor,id);
@@ -197,6 +253,9 @@ public class ReferentielService {
         journal.record(SensitiveOperationJournal.Action.INDISPONIBILITE_SUPPRIMEE,actor,SensitiveOperationJournal.Resource.INDISPONIBILITE,id);
     }
 
+    /**
+     * Vérifie la visibilité puis verrouille et relit l'indisponibilité et sa cible afin de refuser un changement concurrent de ressource.
+     */
     private Indisponibilite managedPeriod(Authentication actor,long id) {
         var visible=indisponibilite(actor,id);
         long zoneId=visible.zoneId()!=null?visible.zoneId():vehicule(actor,visible.vehiculeId()).zoneId();
@@ -211,10 +270,16 @@ public class ReferentielService {
             throw new com.plateforme.covoiturage.exception.BusinessRuleException("RESOURCE_CHANGED");
         return period;
     }
+    /**
+     * Exige une seule cible et une période dont la fin suit strictement le début avant une mutation d'indisponibilité.
+     */
     private void validatePeriod(com.plateforme.covoiturage.dto.request.IndisponibiliteWriteRequest request) {
         if(!request.isCibleValide()||request.debut()==null||request.fin()==null||!request.isPeriodeValide())
             throw new com.plateforme.covoiturage.exception.BusinessRuleException("INVALID_INTERVAL");
     }
+    /**
+     * Refuse une indisponibilité qui chevauche un trajet existant de la zone ou du véhicule concerné.
+     */
     private void requireNoTrip(long zoneId,Long vehicleId,java.time.Instant start,java.time.Instant end) {
         if(trips.resourceOverlaps(zoneId,vehicleId,start,end))
             throw new com.plateforme.covoiturage.exception.BusinessRuleException("RESOURCE_HAS_TRIP");
@@ -226,12 +291,21 @@ public class ReferentielService {
     private <T> Specification<T> id(long id) {
         return (root,query,cb)->cb.equal(root.get("id"),id);
     }
+    /**
+     * Construit le périmètre SQL des zones autorisées sans rendre une zone LOCAL visible hors de son périmètre.
+     */
     private Specification<Zone> zoneScope(Long zoneId) {
         return (root,query,cb)->zoneId==null?cb.conjunction():cb.equal(root.get("id"),zoneId);
     }
+    /**
+     * Filtre les véhicules par leur zone avant de charger les données ou de calculer la pagination.
+     */
     private Specification<Vehicule> vehiculeScope(Long zoneId) {
         return (root,query,cb)->zoneId==null?cb.conjunction():cb.equal(root.get("zone").get("id"),zoneId);
     }
+    /**
+     * Filtre les indisponibilités par zone directe ou zone du véhicule, sans révéler de ressource hors périmètre LOCAL.
+     */
     private Specification<Indisponibilite> periodScope(Long zoneId) {
         return (root,query,cb)->{
             if(zoneId==null)return cb.conjunction();

@@ -27,12 +27,18 @@ public class ReservationService {
  private final EntityManager entityManager;
  private final Clock clock;
  private final SensitiveOperationJournal journal;
+ /**
+  * Crée la demande personnelle EN_ATTENTE d'un trajet public, sous les verrous partagés, sans paiement ni confirmation implicite.
+  */
  @Transactional
  public ReservationResponse reserve(Authentication actor,long tripId){
   var requester=authorization.require(actor);var trip=locks.trip(tripId);
   if(trip.getType()!=TypeTrajet.PUBLIC)throw new AccessDeniedException("Acces interdit");
   return pending(trip,locks.client(requester.getId()));
  }
+ /**
+  * Permet au seul organisateur d'ajouter un client éligible à son trajet privé, sans lui attribuer une confirmation gratuite (RM18, D4).
+  */
  @Transactional
  public ReservationResponse addPrivate(Authentication actor,long tripId,long clientId){
   var requester=authorization.require(actor);var trip=locks.trip(tripId);
@@ -42,6 +48,9 @@ public class ReservationService {
   // Do not infer an additional restriction on managing an existing private trip.
   return pending(trip,locks.client(clientId));
  }
+ /**
+  * Recontrôle l'ouverture, l'éligibilité, la disponibilité et l'absence de réservation active avant de conserver une nouvelle ligne EN_ATTENTE (V16).
+  */
  private ReservationResponse pending(Trajet trip,Client client){
   policy.open(trip);policy.eligible(client,trip.getZone(),trip.getDepart());
   availability.requireAvailable(trip.getVehicule(),trip.getDepart(),trip.getArrivee());
@@ -49,6 +58,15 @@ public class ReservationService {
    throw new BusinessRuleException("DUPLICATE_RESERVATION");
   return mapper.reservation(bookings.saveAndFlush(new Reservation(trip,client)));
  }
+ /**
+  * Annule uniquement sa propre réservation avant le départ, de façon idempotente avant cette limite, sans effacer paiement ni dette (PR #43, V17).
+  * Le trajet et le client sont verrouillés avant la relecture ; aucune annulation de trajet ni remboursement n'est déclenché.
+  * @param actor client authentifié propriétaire de la réservation
+  * @param reservationId identifiant de la réservation à conserver dans l'historique
+  * @return réservation conservée au statut ANNULEE
+  * @throws com.plateforme.covoiturage.exception.ResourceNotFoundException si la réservation est absente ou appartient à un autre client
+  * @throws com.plateforme.covoiturage.exception.BusinessRuleException si l'instant de départ est atteint
+  */
  @Transactional
  public ReservationResponse cancel(Authentication actor,long reservationId){
   var requester=authorization.require(actor);
@@ -67,6 +85,9 @@ public class ReservationService {
   }
   return mapper.reservation(booking);
  }
+ /**
+  * Consulte uniquement les réservations du client authentifié, y compris les lignes historiques annulées.
+  */
  public ReferencePageResponse<ReservationResponse> mine(Authentication actor,ReferencePageRequest page){
   var client=authorization.require(actor);
   return ReferencePageResponse.from(bookings.findByClientId(client.getId(),

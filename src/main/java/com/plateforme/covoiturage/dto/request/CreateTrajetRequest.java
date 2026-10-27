@@ -11,7 +11,10 @@ public record CreateTrajetRequest(@NotNull @Positive Long zoneId,@NotNull @Posit
   origine=origine==null?null:origine.strip();
   destination=destination==null?null:destination.strip();
  }
- @AssertTrue(message="L'arrivee doit suivre strictement le depart")
+ /**
+  * Vérifie que l'arrivée suit strictement le départ, en laissant les contraintes NotNull traiter les dates absentes (D2).
+  */
+ @AssertTrue(message="L'arrivée doit être strictement postérieure au départ.")
  @com.fasterxml.jackson.annotation.JsonIgnore
  public boolean isIntervalValid(){return depart==null||arrivee==null||arrivee.isAfter(depart);}
 }

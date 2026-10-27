@@ -34,6 +34,10 @@ public class PaymentService {
  private final Clock clock;
  private final SensitiveOperationJournal journal;
 
+ /**
+  * Valide une seule fois les 20 EUR du propriétaire et confirme sa place sous verrou, sans dépasser quatre participants confirmés (D4, RM27, RM40).
+  * La clé idempotente est recontrôlée ; la quatrième confirmation publie COMPLET dans la même transaction.
+  */
  @Transactional
  public PaymentResponse paySeat(Authentication actor,long reservationId,UUID key){
   var requester=authorization.require(actor);
@@ -65,6 +69,12 @@ public class PaymentService {
   // Deferred PostgreSQL proof enforces both directions at commit.
   return mapper.place(payment);
  }
+ /**
+  * Conserve le règlement de dette du propriétaire sans dépasser le solde, maintient ACTIVE après paiement partiel et régularise au règlement intégral (RM44, RM52–54).
+  * Aucun règlement ne réactive un compte ou client désactivé.
+  * @param amount montant strictement positif, avec au plus deux décimales
+  * @return preuve de règlement conservée, ou preuve existante pour un rejeu idempotent
+  */
  @Transactional
  public PaymentResponse payDebt(Authentication actor,long debtId,UUID key,BigDecimal amount){
   var requester=authorization.require(actor);locks.client(requester.getId());
@@ -88,12 +98,18 @@ public class PaymentService {
    journal.record(SensitiveOperationJournal.Action.DETTE_REGULARISEE,actor,SensitiveOperationJournal.Resource.DETTE,debtId);
   return mapper.debt(payment);
  }
+ /**
+  * Retourne l'historique du propriétaire en séparant les paiements de places et de dettes, avec une lecture cohérente des totaux et de la page.
+  */
  @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
  public ReferencePageResponse<PaymentResponse> history(Authentication actor,ReferencePageRequest page){
   var client=authorization.require(actor);
   return ReferencePageResponse.from(seatPayments.history(client.getId(),
    PageRequest.of(page.page(),page.size())).map(mapper::history));
  }
+ /**
+  * Liste uniquement les dettes du client authentifié, sans expiration ni effacement implicite.
+  */
  public ReferencePageResponse<DetteResponse> mine(Authentication actor,ReferencePageRequest page){
   var client=authorization.require(actor);
   return ReferencePageResponse.from(debts.findByClientId(client.getId(),
