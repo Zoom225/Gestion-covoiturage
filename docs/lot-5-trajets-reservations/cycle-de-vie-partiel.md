@@ -16,7 +16,8 @@ conserve l'accès à son trajet en sa qualité de propriétaire.
 
 `POST /api/reservations/{id}/annulation` permet au seul propriétaire d'annuler
 sa réservation avant l'instant de départ. L'opération est idempotente, garde sa
-ligne et son éventuel paiement de 20 €, et ne déclenche aucun remboursement.
+ligne et son éventuel paiement de 20 €. Le remboursement simulé à H-24 ou avant
+est décrit dans [l'étape annulation et remboursement](annulation-remboursement-simple.md).
 Elle ne demande pas l'absence de dette ACTIVE : cette dette continue à bloquer
 uniquement les nouvelles créations, réservations et ajouts. Le trajet et le client
 sont verrouillés dans le même ordre que le paiement ; les changements concurrents
@@ -25,6 +26,6 @@ un nouveau paiement pour confirmer la place.
 
 L'annulation directe d'un trajet privé incomplet avant J-1 n'est pas exposée :
 le contrôle planifié ignore un trajet `ANNULE`, ce qui permettrait d'éviter sa
-dette de 80 € sans politique supplémentaire. La décision sur ce cas est attendue.
-Il faut aussi définir l'acteur et le mécanisme de `REALISE`, les remboursements
-et les modifications des trajets avant de déclarer ces parcours terminés.
+dette de 80 € sans politique supplémentaire.
+L'annulation du trajet entier reste interdite selon les nouvelles décisions.
+`REALISE` et les modifications de trajets seront traités dans les étapes suivantes.

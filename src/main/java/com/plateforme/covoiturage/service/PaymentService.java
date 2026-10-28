@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.data.domain.*;
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.math.BigDecimal;
 import java.util.UUID;
 @Service @RequiredArgsConstructor @Transactional(readOnly=true)
@@ -33,6 +35,20 @@ public class PaymentService {
  private final EntityManager entityManager;
  private final Clock clock;
  private final SensitiveOperationJournal journal;
+
+ /** Rembourse intégralement à H-24 inclus, sous les verrous et dans la transaction d'annulation. */
+ @Transactional(propagation=org.springframework.transaction.annotation.Propagation.MANDATORY)
+ public void refundSeat(Authentication actor,Reservation booking,Instant cancelledAt){
+  if(booking.getStatut()!=StatutReservation.ANNULEE)throw new BusinessRuleException("RESERVATION_NOT_CANCELLED");
+  if(cancelledAt.isAfter(booking.getTrajet().getDepart().minus(Duration.ofHours(24))))return;
+  var payment=seatPayments.findByReservationId(booking.getId())
+   .orElseThrow(()->new IllegalStateException("La réservation confirmée doit avoir un paiement"));
+  if(payment.getRembourseLe()!=null)return;
+  gateway.refund(payment.getCleIdempotence(),payment.getMontant());
+  payment.refund(cancelledAt);
+  journal.record(SensitiveOperationJournal.Action.PLACE_REMBOURSEE,actor,
+   SensitiveOperationJournal.Resource.PAIEMENT_PLACE,payment.getId());
+ }
 
  /**
   * Valide une seule fois les 20 EUR du propriétaire et confirme sa place sous verrou, sans dépasser quatre participants confirmés (D4, RM27, RM40).

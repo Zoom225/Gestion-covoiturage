@@ -27,6 +27,7 @@ public class ReservationService {
  private final EntityManager entityManager;
  private final Clock clock;
  private final SensitiveOperationJournal journal;
+ private final PaymentService payments;
  /**
   * Crée la demande personnelle EN_ATTENTE d'un trajet public, sous les verrous partagés, sans paiement ni confirmation implicite.
   */
@@ -60,7 +61,7 @@ public class ReservationService {
  }
  /**
   * Annule uniquement sa propre réservation avant le départ, de façon idempotente avant cette limite, sans effacer paiement ni dette (PR #43, V17).
-  * Le trajet et le client sont verrouillés avant la relecture ; aucune annulation de trajet ni remboursement n'est déclenché.
+  * Le trajet et le client sont verrouillés avant la relecture ; le remboursement éligible partage la transaction.
   * @param actor client authentifié propriétaire de la réservation
   * @param reservationId identifiant de la réservation à conserver dans l'historique
   * @return réservation conservée au statut ANNULEE
@@ -77,9 +78,12 @@ public class ReservationService {
   entityManager.refresh(booking);
   if(!booking.getClient().getId().equals(requester.getId())
     ||!booking.getTrajet().getId().equals(trip.getId()))throw new ResourceNotFoundException();
-  if(!clock.instant().isBefore(trip.getDepart()))throw new BusinessRuleException("DEPARTURE_PASSED");
+  var cancelledAt=clock.instant();
+  if(!cancelledAt.isBefore(trip.getDepart()))throw new BusinessRuleException("DEPARTURE_PASSED");
   if(booking.getStatut()!=StatutReservation.ANNULEE){
+   boolean confirmed=booking.getStatut()==StatutReservation.CONFIRMEE;
    booking.cancel();bookings.flush();
+   if(confirmed)payments.refundSeat(actor,booking,cancelledAt);
    journal.record(SensitiveOperationJournal.Action.RESERVATION_ANNULEE,actor,
     SensitiveOperationJournal.Resource.RESERVATION,reservationId);
   }
