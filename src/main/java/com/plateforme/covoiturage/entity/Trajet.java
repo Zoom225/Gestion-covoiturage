@@ -33,11 +33,15 @@ public class Trajet {
   * Change uniquement le type en PUBLIC sans annuler les réservations ni les preuves de paiement.
   */
  @Column(name="traite_j1_le") private Instant traiteJ1Le;
+ @Column(name="verification_j1_requise",nullable=false) private boolean verificationJ1Requise;
  public void becomePublic(){type=TypeTrajet.PUBLIC;}
  /**
-  * Enregistre la conversion publique et sa date de traitement ; le service J-1 porte la vérification et la dette de 80 EUR (D5).
+  * Enregistre une conversion décidée par le contrôle J-1, sans modifier les dettes existantes.
   */
- public void processJ1(Instant now){becomePublic();traiteJ1Le=now;}
+ public void processJ1(Instant now){becomePublic();recordJ1Check(now);}
+ /** Mémorise aussi un contrôle réussi : une annulation ultérieure ne relance pas J-1. */
+ public void recordJ1Check(Instant now){if(traiteJ1Le==null)traiteJ1Le=now;verificationJ1Requise=false;}
+ public void requireJ1Verification(){verificationJ1Requise=true;}
  /**
   * Marque le trajet COMPLET après la quatrième confirmation validée par le service de paiement (D4).
   */

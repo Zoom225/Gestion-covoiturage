@@ -82,7 +82,7 @@ public class ReservationService {
   if(!cancelledAt.isBefore(trip.getDepart()))throw new BusinessRuleException("DEPARTURE_PASSED");
   if(booking.getStatut()!=StatutReservation.ANNULEE){
    boolean confirmed=booking.getStatut()==StatutReservation.CONFIRMEE;
-   booking.cancel();bookings.flush();
+   booking.cancel(cancelledAt);bookings.flush();
    if(confirmed)payments.refundSeat(actor,booking,cancelledAt);
    journal.record(SensitiveOperationJournal.Action.RESERVATION_ANNULEE,actor,
     SensitiveOperationJournal.Resource.RESERVATION,reservationId);

@@ -128,10 +128,12 @@ class TripCompletionIntegrationTests extends ReportingIntegrationSupport {
         assertThat(reservations.findById(confirmed).orElseThrow().getStatut()).isEqualTo(StatutReservation.CONFIRMEE);
         for (long id : List.of(organizer, waiting)) {
             assertThat(reservations.findById(id).orElseThrow().getStatut()).isEqualTo(StatutReservation.ANNULEE);
+            assertThat(reservations.findById(id).orElseThrow().getAnnuleLe()).isEqualTo(ARRIVAL);
         }
         var ownHistory = read(call("GET", "/api/reservations/me", local, null)).path("content").get(0);
         assertThat(ownHistory.path("reservationId").asLong()).isEqualTo(organizer);
         assertThat(ownHistory.path("statut").asText()).isEqualTo("ANNULEE");
+        assertThat(ownHistory.path("annuleLe").asText()).isEqualTo(ARRIVAL.toString());
     }
 
     @Test void schedulerRepeatedOrRecreatedDoesNotProcessACompletedTripTwice() throws Exception {

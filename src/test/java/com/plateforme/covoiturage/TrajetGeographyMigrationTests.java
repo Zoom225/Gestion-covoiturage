@@ -138,7 +138,8 @@ class TrajetGeographyMigrationTests extends JourneyIntegrationSupport {
 
     @Test void historicalUnknownLocationsHydrateThroughJpaAndSerializeAsNull() throws Exception {
         var f = historicalFixture();
-        flyway(f.schema(), "14").migrate();
+        // L'entité actuelle doit être hydratée depuis le schéma courant ; V14 conserve les lieux inconnus.
+        flyway(f.schema(), "21").migrate();
         try (var em = entityManagers.createEntityManager()) {
             var historical = (Trajet) em.createNativeQuery("select * from " + f.schema() + ".trajet", Trajet.class)
                     .getSingleResult();
@@ -147,6 +148,8 @@ class TrajetGeographyMigrationTests extends JourneyIntegrationSupport {
             assertThat(payload.path("trajetId").asLong()).isEqualTo(LEGACY_ID);
             assertThat(payload.path("origine").isNull()).isTrue();
             assertThat(payload.path("destination").isNull()).isTrue();
+            assertThat(payload.path("traiteJ1Le").isNull()).isTrue();
+            assertThat(payload.path("verificationJ1Requise").asBoolean()).isFalse();
         }
     }
 
