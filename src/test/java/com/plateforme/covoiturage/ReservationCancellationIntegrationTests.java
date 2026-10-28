@@ -48,6 +48,7 @@ class ReservationCancellationIntegrationTests extends ReportingIntegrationSuppor
         assertThat(call("POST", cancel(booking), vip, null).statusCode()).isEqualTo(200);
 
         assertThat(reservations.findById(booking).orElseThrow().getStatut()).isEqualTo(StatutReservation.ANNULEE);
+        assertThat(reservations.findById(booking).orElseThrow().getAnnuleLe()).isEqualTo(cancelledAt);
         var paymentAfter = seatPayments.findByReservationId(booking).orElseThrow();
         assertThat(paymentAfter.getId()).isEqualTo(paymentBefore.getId());
         assertThat(paymentAfter.getMontant()).isEqualByComparingTo("20.00");
@@ -73,6 +74,7 @@ class ReservationCancellationIntegrationTests extends ReportingIntegrationSuppor
 
         assertThat(reservations.findById(booking).orElseThrow().getStatut()).isEqualTo(StatutReservation.ANNULEE);
         assertThat(seatPayments.count()).isZero();
+        assertThat(reservations.findById(booking).orElseThrow().getAnnuleLe()).isEqualTo(NOW);
         verifyNoInteractions(gateway);
     }
 
@@ -104,6 +106,7 @@ class ReservationCancellationIntegrationTests extends ReportingIntegrationSuppor
 
         assertThat(seatPayments.count()).isEqualTo(1);
         assertThat(seatPayments.findByReservationId(booking).orElseThrow().getRembourseLe()).isEqualTo(NOW);
+        assertThat(reservations.findById(booking).orElseThrow().getAnnuleLe()).isEqualTo(NOW);
         verify(gateway, times(1)).refund(any(), any());
     }
 
@@ -141,6 +144,7 @@ class ReservationCancellationIntegrationTests extends ReportingIntegrationSuppor
         assertThat(call("POST", cancel(booking), vip, null).statusCode()).isEqualTo(503);
 
         assertThat(reservations.findById(booking).orElseThrow().getStatut()).isEqualTo(StatutReservation.CONFIRMEE);
+        assertThat(reservations.findById(booking).orElseThrow().getAnnuleLe()).isNull();
         assertThat(jdbc.queryForObject("select statut from trajet where id=?", String.class, trip)).isEqualTo("COMPLET");
         assertThat(seatPayments.findByReservationId(booking).orElseThrow().getRembourseLe()).isNull();
         assertThat(seatPayments.count()).isEqualTo(4);

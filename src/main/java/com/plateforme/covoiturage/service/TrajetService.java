@@ -14,7 +14,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-@Service @RequiredArgsConstructor @Transactional(readOnly=true)
+import java.time.Clock;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.support.TransactionTemplate;
+@Service @RequiredArgsConstructor @lombok.extern.slf4j.Slf4j @Transactional(readOnly=true)
 public class TrajetService {
  private final ClientAuthorization authorization;
  private final JourneyLocks locks;
@@ -24,6 +27,49 @@ public class TrajetService {
  private final ReservationRepository bookings;
  private final ZoneAccessRepository zoneAccess;
  private final TrajetMapper mapper;
+ private final Clock clock;
+ private final TransactionTemplate transactions;
+ private final SensitiveOperationJournal journal;
+ private final J1ProcessingService j1;
+
+ /** Parcourt aussi les arrivées anciennes ; chaque trajet dispose de sa propre transaction, comme à J-1. */
+ @Transactional(propagation=Propagation.NOT_SUPPORTED)
+ public int terminerTrajetsArrives(){
+  // Rattraper J-1 avant REALISE, même au premier passage après un redémarrage.
+  j1.catchUp();
+  int processed=0;
+  long after=0;
+  var now=clock.instant();
+  while(true){
+   var candidates=trips.completionCandidates(after,now,PageRequest.of(0,100));
+   if(candidates.isEmpty())return processed;
+   for(Long id:candidates){
+    after=id;
+    try {
+     if(Boolean.TRUE.equals(transactions.execute(status->terminerTrajet(id))))processed++;
+    } catch(RuntimeException failure){
+     log.warn("Fin de trajet : traitement du trajet {} à reprendre",id);
+    }
+   }
+  }
+ }
+
+ private boolean terminerTrajet(long id){
+  var trip=locks.trip(id);
+  if(trip.getStatut()!=StatutTrajet.PLANIFIE&&trip.getStatut()!=StatutTrajet.COMPLET)return false;
+  if(trip.getType()==TypeTrajet.PRIVE&&trip.getTraiteJ1Le()==null)return false;
+  if(bookings.countByTrajetIdAndStatut(id,StatutReservation.CONFIRMEE)==0)return false;
+  policy.requireAfterArrivalForCompletion(trip);
+  for(var booking:bookings.findByTrajetIdAndStatut(id,StatutReservation.EN_ATTENTE)){
+   booking.cancel(clock.instant());
+   journal.record(SensitiveOperationJournal.Action.RESERVATION_ANNULEE,null,
+    SensitiveOperationJournal.Resource.RESERVATION,booking.getId());
+  }
+  trip.markCompleted();
+  trips.flush();
+  journal.record(SensitiveOperationJournal.Action.TRAJET_REALISE,null,SensitiveOperationJournal.Resource.TRAJET,id);
+  return true;
+ }
 
  /**
   * Crée un trajet éligible et la réservation EN_ATTENTE de l'organisateur après contrôle du véhicule, des indisponibilités et de la pause de quinze minutes (RM14, RM19–20, D2–D4).

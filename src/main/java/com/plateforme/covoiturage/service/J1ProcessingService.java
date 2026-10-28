@@ -1,5 +1,6 @@
 package com.plateforme.covoiturage.service;
 import com.plateforme.covoiturage.entity.DetteTrajet;
+import com.plateforme.covoiturage.entity.Trajet;
 import com.plateforme.covoiturage.enums.*;
 import com.plateforme.covoiturage.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ public class J1ProcessingService {
  private final Clock clock;
  private final SensitiveOperationJournal journal;
  /**
-  * Convertit à J-1 les trajets privés PLANIFIE incomplets et crée une seule dette de 80 EUR pour chaque organisateur (D5, RM41–45).
+  * Reconstitue les confirmations à l'échéance J-1 et mémorise tous les contrôles fiables, réussis ou pénalisés.
   * La borne incluse est 00:15 Europe/Brussels la veille du départ ; chaque candidat est relu sous verrou et validé dans sa propre transaction.
   * Un candidat en échec reste à reprendre lors du rattrapage, sans validation partielle.
   * @return nombre de trajets effectivement convertis pendant ce passage
@@ -38,17 +39,7 @@ public class J1ProcessingService {
     Boolean changed=transactions.execute(status->{
      var trip=locks.trip(id);
      locks.client(trip.getOrganisateur().getId());
-     Instant deadline=trip.getDepart().atZone(BUSINESS_ZONE).toLocalDate().minusDays(1)
-      .atTime(0,15).atZone(BUSINESS_ZONE).toInstant();
-     if(trip.getType()!=TypeTrajet.PRIVE||trip.getStatut()!=StatutTrajet.PLANIFIE
-       ||now.isBefore(deadline)||reservations.countByTrajetIdAndStatut(id,StatutReservation.CONFIRMEE)>=BookingPolicy.MAX_CONFIRMED)return false;
-     trip.processJ1(now);
-     journal.record(SensitiveOperationJournal.Action.TRAJET_CONVERTI_PUBLIC,null,SensitiveOperationJournal.Resource.TRAJET,id);
-     if(!debts.existsByTrajetId(id)){
-      var debt=debts.saveAndFlush(new DetteTrajet(trip));
-      journal.record(SensitiveOperationJournal.Action.DETTE_CREEE,null,SensitiveOperationJournal.Resource.DETTE,debt.getId());
-     }
-     return true;
+     return controler(trip);
     });
     if(Boolean.TRUE.equals(changed))processed++;
     } catch (RuntimeException failure) {
@@ -56,5 +47,35 @@ public class J1ProcessingService {
     }
    }
   }
+ }
+
+ /** Appelé uniquement après relecture et verrouillage du trajet et de l'organisateur. */
+ private boolean controler(Trajet trip){
+  Instant now=clock.instant();
+  Instant deadline=trip.getDepart().atZone(BUSINESS_ZONE).toLocalDate().minusDays(1)
+   .atTime(0,15).atZone(BUSINESS_ZONE).toInstant();
+  if(trip.getType()!=TypeTrajet.PRIVE||trip.getStatut()==StatutTrajet.ANNULE
+    ||trip.getTraiteJ1Le()!=null||now.isBefore(deadline))return false;
+  long id=trip.getId();
+  if(reservations.hasUnverifiableJ1History(id,deadline)){
+   if(!trip.isVerificationJ1Requise()){
+    trip.requireJ1Verification();
+    journal.record(SensitiveOperationJournal.Action.VERIFICATION_J1_REQUISE,null,SensitiveOperationJournal.Resource.TRAJET,id);
+    log.warn("J1 : historique insuffisant pour le trajet {}, vérification nécessaire ; aucune dette supposée",id);
+   }
+   return false;
+  }
+  if(reservations.countConfirmedAtJ1(id,deadline)>=BookingPolicy.MAX_CONFIRMED){
+   trip.recordJ1Check(now);
+   journal.record(SensitiveOperationJournal.Action.CONTROLE_J1_REUSSI,null,SensitiveOperationJournal.Resource.TRAJET,id);
+   return false;
+  }
+  trip.processJ1(now);
+  journal.record(SensitiveOperationJournal.Action.TRAJET_CONVERTI_PUBLIC,null,SensitiveOperationJournal.Resource.TRAJET,id);
+  if(!debts.existsByTrajetId(id)){
+   var debt=debts.saveAndFlush(new DetteTrajet(trip));
+   journal.record(SensitiveOperationJournal.Action.DETTE_CREEE,null,SensitiveOperationJournal.Resource.DETTE,debt.getId());
+  }
+  return true;
  }
 }

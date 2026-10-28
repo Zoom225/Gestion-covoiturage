@@ -9,6 +9,12 @@ import org.testcontainers.utility.DockerImageName;
 @TestConfiguration(proxyBeanMethods = false)
 class TestcontainersConfiguration {
 
+	/** Les tests appellent le scheduler explicitement pour maîtriser l'horloge et les transactions. */
+	@Bean
+	org.springframework.test.context.DynamicPropertyRegistrar completionTestProperties() {
+		return registry -> registry.add("driveconnect.scheduling.completion.enabled", () -> "false");
+	}
+
 	@Bean
 	org.springframework.test.context.DynamicPropertyRegistrar jwtTestProperties() {
 		byte[] key = new byte[64];

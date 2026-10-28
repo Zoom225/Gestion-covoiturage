@@ -23,6 +23,16 @@ public class BookingPolicy {
   Instant opens=departure.atZone(ZoneId.of(zone.getFuseauHoraire())).minusDays(days).toInstant();
   if(!departure.isAfter(now)||now.isBefore(opens))throw new BusinessRuleException("BOOKING_HORIZON");
  }
+ /**
+  * Vérifie que l'arrivée est atteinte, borne incluse selon la règle validée pour REALISE.
+  * Le service vérifie séparément l'état et les confirmations, sous JourneyLocks.
+  * Cette garde seule ne change aucun statut ni donnée financière.
+  * @param trip trajet relu sous JourneyLocks
+  * @throws com.plateforme.covoiturage.exception.BusinessRuleException si l'heure d'arrivée n'est pas encore atteinte
+  */
+ public void requireAfterArrivalForCompletion(Trajet trip){
+  if(clock.instant().isBefore(trip.getArrivee()))throw new BusinessRuleException("TRIP_ARRIVAL_NOT_PASSED");
+ }
  public static final int MAX_CONFIRMED=4;
  /**
   * Empêche de préparer l'annulation privée incomplète avant J-1 qui éviterait la dette de 80 EUR (décision de #26, PR #44).
