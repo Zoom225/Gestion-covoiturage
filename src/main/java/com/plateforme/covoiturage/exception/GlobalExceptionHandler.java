@@ -94,8 +94,20 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessRuleException.class)
     ResponseEntity<ApiErrorResponse> business(BusinessRuleException ex,HttpServletRequest request){
+        String message=switch(ex.getCode()){
+            case "TRIP_ALREADY_STARTED" -> "Un trajet déjà parti ne peut pas être modifié.";
+            case "TRIP_NOT_MODIFIABLE" -> "Seul un trajet PLANIFIE peut être modifié.";
+            case "TRIP_HAS_CONFIRMED_RESERVATION" -> "Une réservation confirmée empêche la modification du trajet.";
+            case "TRIP_HAS_PAYMENT" -> "Un paiement de place historique empêche la modification, même après annulation ou remboursement.";
+            case "TRIP_J1_ALREADY_PROCESSED" -> "Le contrôle J-1 a déjà été effectué : le trajet ne peut plus être modifié.";
+            case "TRIP_J1_VERIFICATION_REQUIRED" -> "Une vérification de l'historique J-1 est nécessaire avant toute modification.";
+            case "TRIP_J1_DUE" -> "La modification ne peut pas déplacer un contrôle J-1 déjà dû.";
+            case "TRIP_HAS_DEBT" -> "Une dette liée au trajet empêche sa modification.";
+            case "PENDING_RESERVATION_INCOMPATIBLE" -> "Les nouveaux horaires sont incompatibles avec une réservation EN_ATTENTE ; aucune réservation n'a été modifiée.";
+            default -> "Opération incompatible avec les règles métier.";
+        };
         return ResponseEntity.status(409).body(ApiErrorResponse.of(409,ex.getCode(),
-                "Opération incompatible avec les règles métier.",request.getRequestURI()));
+                message,request.getRequestURI()));
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)

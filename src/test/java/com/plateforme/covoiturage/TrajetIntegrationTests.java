@@ -183,11 +183,19 @@ class TrajetIntegrationTests extends JourneyIntegrationSupport {
   assertThat(jdbc.queryForObject("select nom from "+schema+".zone where id=1",String.class)).isEqualTo("Preserved");
   assertThat(jdbc.queryForObject("select count(*) from "+schema+".trajet",Integer.class)).isZero();
  }
- @Test void swaggerDocumentsPendingBookingsAndNoUndefinedMutations()throws Exception{
-  var paths=read(call("GET","/v3/api-docs",null,null)).path("paths");
+ @Test void swaggerDocumentsPendingBookingsAndControlledUpdateButNoTripDeletion()throws Exception{
+  var document=read(call("GET","/v3/api-docs",null,null));
+  var paths=document.path("paths");
   assertThat(paths.path("/api/trajets").has("post")).isTrue();
   assertThat(paths.path("/api/trajets/{id}/reservations").has("post")).isTrue();
   assertThat(paths.path("/api/trajets/{id}").has("delete")).isFalse();
-  assertThat(paths.path("/api/trajets/{id}").has("put")).isFalse();
+  var update=paths.path("/api/trajets/{id}").path("put");
+  assertThat(update.isMissingNode()).isFalse();
+  assertThat(update.path("requestBody").path("required").asBoolean()).isTrue();
+  var fields=document.path("components").path("schemas").path("UpdateTrajetRequest").path("properties");
+  for(String allowed:List.of("vehiculeId","depart","arrivee","origine","destination"))
+   assertThat(fields.has(allowed)).as(allowed).isTrue();
+  for(String forbidden:List.of("zoneId","type","organisateurId","statut"))
+   assertThat(fields.has(forbidden)).as(forbidden).isFalse();
  }
 }

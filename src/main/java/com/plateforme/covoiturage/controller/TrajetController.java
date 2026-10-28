@@ -19,6 +19,12 @@ import org.springframework.web.bind.annotation.*;
 public class TrajetController {
  private final TrajetService trips;
  private final ReservationService bookings;
+ @PutMapping("/trajets/{id}")
+ @Operation(summary="Modifier son trajet avant confirmation et contrôle J-1")
+ public ResponseEntity<TrajetResponse> update(@Parameter(hidden=true) Authentication actor,
+  @Positive @PathVariable long id,@Valid @RequestBody UpdateTrajetRequest request){
+  return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(trips.update(actor,id,request));
+ }
  @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode="201",description="Trajet et place logique créés")
  @PostMapping("/trajets") @Operation(summary="Créer un trajet et la place logique EN_ATTENTE de l'organisateur")
  public ResponseEntity<TrajetResponse> create(@Parameter(hidden=true) Authentication actor,@Valid @RequestBody CreateTrajetRequest request){
