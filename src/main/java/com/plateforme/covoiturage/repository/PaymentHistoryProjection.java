@@ -11,4 +11,5 @@ public interface PaymentHistoryProjection {
     BigDecimal getMontant();
     String getMode();
     Instant getValideLe();
+    Instant getRembourseLe();
 }

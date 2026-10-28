@@ -114,4 +114,51 @@ class CancellationIntegrityIntegrationTests extends ReportingIntegrationSupport 
             }
         }
     }
+
+    @Test void v19AddsRefundTrackingWithoutChangingExistingPaymentOrDebt() throws Exception {
+        String schema = "refund_upgrade_" + UUID.randomUUID().toString().replace("-", "");
+        Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).target("18").load().migrate();
+        UUID paymentKey = UUID.randomUUID();
+        try (var connection = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+            connection.setSchema(schema);
+            connection.setAutoCommit(false);
+            try (var statement = connection.createStatement()) {
+                statement.execute("insert into zone(id,nom) values(1,'Zone')");
+                statement.execute("insert into vehicule(id,zone_id) values(1,1)");
+                statement.execute("insert into client(id,numero,categorie,actif,zone_id) values(1,reserve_client_number('LOCAL'),'LOCAL',true,1)");
+                statement.execute("insert into trajet(id,zone_id,vehicule_id,organisateur_id,depart,arrivee,type,origine,destination) " +
+                        "values(1,1,1,1,now()+interval '2 days',now()+interval '2 days 1 hour','PUBLIC','Départ','Arrivée')");
+                statement.execute("insert into reservation(id,trajet_id,client_id,statut) values(1,1,1,'CONFIRMEE')");
+                statement.execute("insert into paiement_place(id,reservation_id,cle_idempotence,montant,mode,valide_le) " +
+                        "values(1,1,'" + paymentKey + "',20,'SIMULATION',now())");
+                statement.execute("insert into dette_trajet(id,trajet_id,client_id,montant) values(1,1,1,80)");
+            }
+            connection.commit();
+        }
+
+        var upgrade = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).target("19").load();
+        assertThat(upgrade.migrate().migrationsExecuted).isEqualTo(1);
+        assertThat(upgrade.migrate().migrationsExecuted).isZero();
+        assertThat(upgrade.validateWithResult().validationSuccessful).isTrue();
+        try (var connection = DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
+            connection.setSchema(schema);
+            try (var statement = connection.createStatement()) {
+                try (var rows = statement.executeQuery("select r.statut,p.cle_idempotence,p.montant,p.rembourse_le,d.montant,d.statut " +
+                        "from reservation r join paiement_place p on p.reservation_id=r.id " +
+                        "join dette_trajet d on d.trajet_id=r.trajet_id where r.id=1")) {
+                    assertThat(rows.next()).isTrue();
+                    assertThat(rows.getString(1)).isEqualTo("CONFIRMEE");
+                    assertThat(rows.getObject(2, UUID.class)).isEqualTo(paymentKey);
+                    assertThat(rows.getBigDecimal(3)).isEqualByComparingTo("20.00");
+                    assertThat(rows.getObject(4)).isNull();
+                    assertThat(rows.getBigDecimal(5)).isEqualByComparingTo("80.00");
+                    assertThat(rows.getString(6)).isEqualTo("ACTIVE");
+                }
+                assertThatThrownBy(() -> statement.execute("update paiement_place set rembourse_le=valide_le-interval '1 second' where id=1"))
+                        .isInstanceOf(SQLException.class);
+                statement.execute("update reservation set statut='ANNULEE' where id=1");
+                statement.execute("update paiement_place set rembourse_le=valide_le+interval '1 hour' where id=1");
+            }
+        }
+    }
 }

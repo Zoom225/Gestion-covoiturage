@@ -12,7 +12,10 @@ public class PaiementPlace {
  @Column(nullable=false,precision=10,scale=2) private BigDecimal montant;
  @Column(nullable=false,length=20) private String mode;
  @Column(name="valide_le",nullable=false) private Instant valideLe;
+ @Column(name="rembourse_le") private Instant rembourseLe;
  public PaiementPlace(Reservation target,UUID key,BigDecimal amount,String mode,Instant now){
   this.reservation=target;this.cleIdempotence=key;this.montant=amount;this.mode=mode;this.valideLe=now;
  }
+ /** Le remboursement est intégral ; le montant et la date du paiement initial restent conservés. */
+ public void refund(Instant now){if(rembourseLe==null)rembourseLe=now;}
 }

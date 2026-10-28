@@ -5,4 +5,5 @@ import java.util.UUID;
 public interface PaymentGateway {
  enum Mode { SIMULATION }
  Mode validate(UUID operation,BigDecimal amount);
+ void refund(UUID paymentOperation,BigDecimal amount);
 }

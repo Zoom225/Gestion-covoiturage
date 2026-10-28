@@ -16,4 +16,12 @@ class SimulationGatewayTests {
   if(allowed)assertThat(gateway.validate(UUID.randomUUID(),new BigDecimal("20.00"))).isEqualTo(PaymentGateway.Mode.SIMULATION);
   else assertThatThrownBy(()->gateway.validate(UUID.randomUUID(),new BigDecimal("20.00"))).isInstanceOf(PaymentUnavailableException.class);
  }
+ @ParameterizedTest @CsvSource({"dev,true,true","prod,true,false","dev+prod,true,false","dev,false,false","test,true,false"})
+ void refundSimulationUsesTheSameExplicitActivation(String profiles,boolean enabled,boolean allowed){
+  var environment=new MockEnvironment().withProperty("driveconnect.payments.simulation-enabled",Boolean.toString(enabled));
+  environment.setActiveProfiles(profiles.split("\\+"));
+  var gateway=new ConfiguredPaymentGateway(environment);
+  if(allowed)assertThatCode(()->gateway.refund(UUID.randomUUID(),new BigDecimal("20.00"))).doesNotThrowAnyException();
+  else assertThatThrownBy(()->gateway.refund(UUID.randomUUID(),new BigDecimal("20.00"))).isInstanceOf(PaymentUnavailableException.class);
+ }
 }

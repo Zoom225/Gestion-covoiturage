@@ -17,4 +17,8 @@ public class ConfiguredPaymentGateway implements PaymentGateway {
    throw new PaymentUnavailableException();
   return Mode.SIMULATION;
  }
+ /** Simulation uniquement, avec les mêmes conditions d'activation que le paiement. */
+ @Override public void refund(UUID paymentOperation,BigDecimal amount){
+  validate(paymentOperation,amount);
+ }
 }
