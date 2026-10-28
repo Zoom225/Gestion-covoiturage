@@ -8,6 +8,7 @@ public interface ReservationRepository extends JpaRepository<Reservation,Long> {
  boolean existsByTrajetIdAndClientIdAndStatutNot(Long trajetId,Long clientId,StatutReservation statut);
  boolean existsByTrajetIdAndClientId(Long trajetId,Long clientId);
  long countByTrajetIdAndStatut(Long trajetId,StatutReservation statut);
+ java.util.List<Reservation> findByTrajetIdAndStatut(Long trajetId,StatutReservation statut);
  @Override @EntityGraph(attributePaths={"trajet","trajet.zone","client"})
  Optional<Reservation> findById(Long id);
  @EntityGraph(attributePaths={"trajet","trajet.zone","client"})

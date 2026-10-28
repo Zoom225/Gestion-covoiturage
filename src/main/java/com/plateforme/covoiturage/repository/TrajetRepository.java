@@ -41,4 +41,6 @@ public interface TrajetRepository extends JpaRepository<Trajet,Long>,JpaSpecific
  boolean resourceOverlaps(@Param("zone") long zone,@Param("vehicle") Long vehicle,@Param("start") Instant start,@Param("end") Instant end);
  @Query("select t.id from Trajet t where t.id>:after and t.type=com.plateforme.covoiturage.enums.TypeTrajet.PRIVE and t.statut=com.plateforme.covoiturage.enums.StatutTrajet.PLANIFIE and t.depart<:until order by t.id")
  List<Long> j1Candidates(@Param("after") long after,@Param("until") Instant until,Pageable page);
+ @Query("select t.id from Trajet t where t.id>:after and t.arrivee<=:now and t.statut in (com.plateforme.covoiturage.enums.StatutTrajet.PLANIFIE,com.plateforme.covoiturage.enums.StatutTrajet.COMPLET) order by t.id")
+ List<Long> completionCandidates(@Param("after") long after,@Param("now") Instant now,Pageable page);
 }

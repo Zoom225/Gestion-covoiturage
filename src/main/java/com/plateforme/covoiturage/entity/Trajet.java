@@ -42,4 +42,6 @@ public class Trajet {
   * Marque le trajet COMPLET après la quatrième confirmation validée par le service de paiement (D4).
   */
  public void markFull(){statut=StatutTrajet.COMPLET;}
+ /** Le service vérifie l'arrivée et les confirmations sous verrou avant cette transition. */
+ public void markCompleted(){statut=StatutTrajet.REALISE;}
 }
