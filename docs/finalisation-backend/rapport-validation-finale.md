@@ -100,7 +100,9 @@ Les scénarios métier avec écritures sont exécutés sur les bases éphémère
 
 CI de la PR #55 sur le dernier commit : [Backend #99](https://github.com/Zoom225/Gestion-covoiturage/actions/runs/40915366961), réussie.
 Journal : 792 tests, 0 échec, 0 erreur, 0 ignoré, BUILD SUCCESS ; rapports publiés.
-CI de la branche finale : en attente du push documentaire ; les preuves seront liées dans la PR avant remise.
+CI de la branche finale : [Backend #102](https://github.com/Zoom225/Gestion-covoiturage/actions/runs/40920001723), réussie sur e1d5bd5. Les 792 tests passent sans échec, erreur ni test ignoré ; BUILD SUCCESS et rapports publiés. La PR #57 reste ouverte pour examen. Les contrôles de chaque commit documentaire suivant restent visibles dans son onglet Checks.
+
+Le contrat a été comparé au schéma OpenAPI du JAR démarré : les 40 opérations HTTP exposées y figurent, sans omission.
 
 Issue : [#56](https://github.com/Zoom225/Gestion-covoiturage/issues/56). Branche : chore/final-backend-validation.
 La dernière PR est laissée ouverte pour examen ; aucune fusion autorisée par cette mission.
