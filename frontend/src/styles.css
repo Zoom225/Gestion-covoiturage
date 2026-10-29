@@ -1,5 +1,6 @@
 @import '@fontsource-variable/manrope';
 @import 'tailwindcss';
+@import './app/features/trajets/trajets.css';
 
 @theme {
   --font-sans: 'Manrope Variable', 'Segoe UI', sans-serif;

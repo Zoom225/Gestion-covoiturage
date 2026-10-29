@@ -1,0 +1,119 @@
+<div class="trips-page-heading">
+  <p class="eyebrow">LE RÉSEAU VOUS RAPPROCHE</p>
+  <h1>Rechercher un trajet</h1>
+  <p>Explorez les trajets accessibles dans vos zones et préparez votre prochain déplacement.</p>
+</div>
+<section class="trip-search-panel" aria-labelledby="search-heading">
+  <div class="search-panel-heading">
+    <span class="feature-icon"><app-icon name="search" /></span>
+    <div>
+      <h2 id="search-heading">Où souhaitez-vous voyager ?</h2>
+      <p>Choisissez une zone parmi celles autorisées pour votre compte.</p>
+    </div>
+  </div>
+  @if (loadingZones()) {
+    <p class="trip-loading" role="status">
+      <span class="spinner" aria-hidden="true"></span>Chargement de vos zones…
+    </p>
+  } @else if (zonesError()) {
+    <app-notice tone="error" [message]="zonesError()" /><button
+      class="btn btn-quiet"
+      (click)="retryZones()"
+    >
+      Réessayer le chargement des zones
+    </button>
+  } @else if (!zones().length) {
+    <div class="trip-empty" role="status">
+      <app-icon name="route" />
+      <h3>Aucune zone disponible</h3>
+      <p>
+        Votre compte n’a actuellement accès à aucune zone. Votre administrateur peut vous
+        renseigner.
+      </p>
+      <button class="btn btn-quiet" (click)="retryZones()">Actualiser mes zones</button>
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="search()" class="trip-search-form">
+      <div class="field">
+        <label for="trip-zone">Zone de covoiturage</label
+        ><select id="trip-zone" [formControl]="zoneControl" aria-describedby="zone-search-help">
+          <option value="">Toutes mes zones</option>
+          @for (zone of zones(); track zone.zoneId) {
+            <option [value]="zone.zoneId">{{ zone.nom }}</option>
+          }
+        </select>
+        <p id="zone-search-help" class="field-hint">
+          La recherche porte sur la zone, sans filtre de lieu ou de date.
+        </p>
+      </div>
+      <button class="btn btn-primary" type="submit" [disabled]="searching()">
+        <app-icon name="search" />Rechercher
+      </button>
+    </form>
+  }
+</section>
+@if (zones().length && !loadingZones()) {
+  <section aria-labelledby="results-heading" class="trip-results" [attr.aria-busy]="searching()">
+    <div class="trip-results-heading">
+      <div>
+        <p class="eyebrow">VOS POSSIBILITÉS DE DÉPART</p>
+        <h2 id="results-heading">Les trajets du réseau</h2>
+      </div>
+      <button class="btn btn-quiet" (click)="reload()" [disabled]="searching()">
+        Actualiser les résultats
+      </button>
+    </div>
+    @if (searching()) {
+      <div class="trip-loading results-loading" role="status">
+        <span class="spinner" aria-hidden="true"></span>Recherche des trajets en cours…
+      </div>
+    } @else if (searchError()) {
+      <app-notice tone="error" [message]="searchError()" />
+    } @else if (results(); as page) {
+      <p class="results-count" role="status">
+        {{ page.totalElements }}
+        {{ page.totalElements > 1 ? 'trajets trouvés' : 'trajet trouvé' }} ·
+        {{ criteria().zoneId === null ? 'Toutes mes zones' : zoneName(criteria().zoneId!) }}
+      </p>
+      @if (!page.content.length) {
+        <div class="trip-empty">
+          <app-icon name="search" />
+          <h3>Aucun trajet pour le moment</h3>
+          <p>
+            Aucun trajet ne correspond à votre recherche. Essayez une autre zone ou actualisez les
+            résultats.
+          </p>
+        </div>
+      } @else {
+        <div class="trip-cards">
+          @for (trip of page.content; track trip.trajetId) {
+            <app-trip-card
+              [trip]="trip"
+              [zoneName]="zoneName(trip.zoneId)"
+              [criteria]="criteria()"
+            />
+          }
+        </div>
+      }
+      @if (page.totalPages > 1) {
+        <nav class="trip-pagination" aria-label="Pagination des trajets">
+          <button
+            class="btn btn-quiet"
+            [disabled]="page.page === 0"
+            (click)="goToPage(page.page - 1)"
+          >
+            Page précédente
+          </button>
+          <p aria-current="page">Page {{ page.page + 1 }} sur {{ page.totalPages }}</p>
+          <button
+            class="btn btn-quiet"
+            [disabled]="page.page + 1 >= page.totalPages"
+            (click)="goToPage(page.page + 1)"
+          >
+            Page suivante
+          </button>
+        </nav>
+      }
+    }
+  </section>
+}

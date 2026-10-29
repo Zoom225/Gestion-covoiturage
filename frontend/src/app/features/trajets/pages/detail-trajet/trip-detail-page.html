@@ -1,0 +1,95 @@
+<a routerLink="/trajets" [queryParams]="backCriteria()" class="back-link trip-back"
+  >← Retour aux résultats</a
+>
+<div class="trips-page-heading">
+  <p class="eyebrow">VOTRE PROCHAIN DÉPLACEMENT</p>
+  <h1>Détail du trajet</h1>
+  <p>Les informations utiles, avant de préparer votre départ.</p>
+</div>
+@if (loading()) {
+  <div class="trip-loading results-loading" role="status">
+    <span class="spinner" aria-hidden="true"></span>Chargement du trajet…
+  </div>
+} @else if (error()) {
+  <app-notice tone="error" [message]="error()" /><button class="btn btn-quiet" (click)="retry()">
+    Réessayer le chargement du trajet
+  </button>
+} @else if (trip(); as trip) {
+  <div class="trip-detail-grid">
+    <section class="trip-detail-main" aria-labelledby="journey-heading">
+      <div class="trip-card-top">
+        <span class="trip-zone"><app-icon name="route" />{{ zoneName() }}</span
+        ><app-trip-status [status]="trip.statut" />
+      </div>
+      <h2 id="journey-heading">
+        {{ trip.origine || 'Départ non renseigné' }} <span aria-hidden="true">→</span>
+        {{ trip.destination || 'Destination non renseignée' }}
+      </h2>
+      <p class="trip-type">
+        {{ trip.type === 'PUBLIC' ? 'Trajet public' : 'Trajet privé' }} · Trajet n°
+        {{ trip.trajetId }}
+      </p>
+      <ol class="trip-timeline">
+        <li>
+          <span class="timeline-dot" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow">DÉPART</p>
+            <h3>{{ trip.origine || 'Lieu de départ non renseigné' }}</h3>
+            <time [attr.datetime]="trip.depart">{{
+              trip.depart | tripDate: trip.fuseauHoraire
+            }}</time>
+          </div>
+        </li>
+        <li>
+          <span class="timeline-dot destination-dot" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow">ARRIVÉE</p>
+            <h3>{{ trip.destination || 'Destination non renseignée' }}</h3>
+            <time [attr.datetime]="trip.arrivee">{{
+              trip.arrivee | tripDate: trip.fuseauHoraire
+            }}</time>
+          </div>
+        </li>
+      </ol>
+      <p class="timezone-note">Horaires affichés dans le fuseau {{ trip.fuseauHoraire }}.</p>
+      <dl class="trip-details-facts">
+        <div>
+          <dt>Zone</dt>
+          <dd>{{ zoneName() }}</dd>
+        </div>
+        <div>
+          <dt>Véhicule</dt>
+          <dd>Véhicule n° {{ trip.vehiculeId }}</dd>
+        </div>
+        <div>
+          <dt>Places restantes</dt>
+          <dd>Nombre non communiqué</dd>
+        </div>
+        <div>
+          <dt>Visibilité</dt>
+          <dd>{{ trip.type === 'PUBLIC' ? 'Public' : 'Privé' }}</dd>
+        </div>
+      </dl>
+      @if (zoneWarning()) {
+        <app-notice
+          message="Le nom de la zone n’a pas pu être chargé. Son numéro reste disponible dans les informations du trajet."
+        />
+      }
+    </section>
+    <aside class="trip-traveler-panel" aria-labelledby="traveler-heading">
+      <span class="feature-icon"><app-icon name="ticket" /></span>
+      <h2 id="traveler-heading">Avant de partir</h2>
+      <app-notice [message]="tripNotice()" />
+      <p class="reservation-coming"><app-icon name="calendar" />Réservation bientôt disponible</p>
+      <p>La réservation sera proposée dans une prochaine étape de DriveConnect.</p>
+      <div class="trip-rules">
+        <app-icon name="shield" />
+        <p>
+          Vos droits d’accès sont contrôlés par le service. Un trajet privé n’est visible que dans
+          le périmètre autorisé de votre compte.
+        </p>
+      </div>
+      <button class="btn btn-quiet w-full" (click)="retry()">Actualiser les informations</button>
+    </aside>
+  </div>
+}

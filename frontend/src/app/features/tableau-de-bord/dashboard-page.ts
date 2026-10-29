@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { AuthService } from '../../core/auth/auth-service';
 import { Icon, IconName } from '../../shared/components/icon';
 import { ClientCategory } from '../../shared/models/auth.models';
+import { RouterLink } from '@angular/router';
 
 const categoryNames: Record<ClientCategory, string> = {
   VIP: 'VIP',
@@ -9,18 +10,19 @@ const categoryNames: Record<ClientCategory, string> = {
   OCCASIONNEL: 'Occasionnel',
 };
 @Component({
-  imports: [Icon],
+  imports: [Icon, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-page.html',
 })
 export class DashboardPage {
   protected readonly auth = inject(AuthService);
   protected readonly categoryNames = categoryNames;
-  protected readonly modules: { icon: IconName; title: string; text: string }[] = [
+  protected readonly modules: { icon: IconName; title: string; text: string; path?: string }[] = [
     {
       icon: 'search',
       title: 'Rechercher un trajet',
       text: 'Explorer les trajets accessibles dans vos zones.',
+      path: '/trajets',
     },
     {
       icon: 'ticket',
