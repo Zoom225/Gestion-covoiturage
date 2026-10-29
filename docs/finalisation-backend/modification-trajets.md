@@ -37,9 +37,13 @@ pour les nouveaux horaires. Une incompatibilité refuse toute la modification av
 `PENDING_RESERVATION_INCOMPATIBLE` et un message explicite. Aucune réservation n'est
 automatiquement confirmée, annulée ou transférée.
 
-Le cahier des charges ne définit pas de nouvelle règle de consentement géographique des
-participants en attente. Cette version applique uniquement les conditions existantes ;
-elle n'ajoute ni géocodage ni notification ni accord collectif.
+Règle validée : dès qu'une réservation EN_ATTENTE active existe, les lieux sont figés,
+y compris lorsque seule la place logique de l'organisateur est en attente. Le code
+`TRIP_LOCATIONS_LOCKED` renvoie 409 avec un message explicite. Une valeur identique à celle
+enregistrée, après la normalisation habituelle des espaces, ne constitue pas un changement.
+Les réservations annulées ne bloquent pas ce contrôle. Les autres restrictions, notamment
+les paiements historiques, continuent de s'appliquer. Les horaires et le véhicule restent
+modifiables sous les conditions précédentes ; aucune réservation n'est annulée pour cela.
 
 ## Parcours dans le code
 
@@ -86,7 +90,7 @@ pas encore parti. Le contrôleur reçoit la demande sécurisée par JWT. Le serv
 l'identité et les règles métier : aucune confirmation ni aucun paiement historique, pas de
 contrôle J-1 déjà effectué et aucun contournement de dette. Il contrôle aussi les zones,
 la disponibilité du véhicule et les quinze minutes entre deux trajets. Les demandes en attente
-sont conservées ; une incompatibilité fait refuser l'ensemble. Les repositories interrogent
+sont conservées et figent les lieux ; une incompatibilité fait refuser l'ensemble. Les repositories interrogent
 PostgreSQL, puis la transaction enregistre les changements ensemble. Les mêmes verrous
 empêchent une réservation ou un paiement simultané de contourner les contrôles. Les tests
 HTTP et PostgreSQL vérifient les réussites, les refus et la conservation de l'historique. »

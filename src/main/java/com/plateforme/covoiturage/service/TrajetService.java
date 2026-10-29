@@ -46,6 +46,9 @@ public class TrajetService {
   var vehicle=vehicles.findById(request.vehiculeId()).orElseThrow(ResourceNotFoundException::new);
   if(!vehicle.isActif())throw new BusinessRuleException("VEHICLE_INACTIVE");
   var pending=bookings.findByTrajetIdAndStatut(id,StatutReservation.EN_ATTENTE);
+  if(!pending.isEmpty()&&(!java.util.Objects.equals(trip.getOrigine(),request.origine())
+    ||!java.util.Objects.equals(trip.getDestination(),request.destination())))
+   throw new BusinessRuleException("TRIP_LOCATIONS_LOCKED");
   // Même ordre partagé pour les clients ; aucune réservation n'est migrée ni annulée.
   var clientIds=new java.util.TreeSet<Long>();
   clientIds.add(requester.getId());

@@ -21,7 +21,7 @@ class TripUpdateIntegrationTests extends ReportingIntegrationSupport {
 
     private Map<String,Object> update(Vehicule selected,Instant start,Instant end){
         return new HashMap<>(Map.of("vehiculeId",selected.getId(),"depart",start.toString(),"arrivee",end.toString(),
-                "origine","  Bruxelles-Central  ","destination","  Namur  "));
+                "origine","Gare de Bruxelles-Midi","destination","Gare de Liège-Guillemins"));
     }
     private Map<String,Object> update(){return update(secondVehicle,START.plusSeconds(3600),END.plusSeconds(3600));}
     private String path(long trip){return "/api/trajets/"+trip;}
@@ -52,15 +52,15 @@ class TripUpdateIntegrationTests extends ReportingIntegrationSupport {
         assertThat(saved.getVehicule().getId()).isEqualTo(secondVehicle.getId());
         assertThat(saved.getDepart()).isEqualTo(START.plusSeconds(3600));
         assertThat(saved.getArrivee()).isEqualTo(END.plusSeconds(3600));
-        assertThat(saved.getOrigine()).isEqualTo("Bruxelles-Central");
-        assertThat(saved.getDestination()).isEqualTo("Namur");
+        assertThat(saved.getOrigine()).isEqualTo("Gare de Bruxelles-Midi");
+        assertThat(saved.getDestination()).isEqualTo("Gare de Liège-Guillemins");
         assertThat(saved.getZone().getId()).isEqualTo(home.getId());
         assertThat(saved.getOrganisateur().getId()).isEqualTo(local.getClient().getId());
         assertThat(saved.getType()).isEqualTo(type);
         assertThat(saved.getStatut()).isEqualTo(StatutTrajet.PLANIFIE);
         assertThat(jdbc.queryForList("select to_jsonb(r)::text from reservation r order by id",String.class)).isEqualTo(bookingsBefore);
         var detail=read(call("GET",path(trip),local,null));
-        assertThat(detail.path("origine").asText()).isEqualTo("Bruxelles-Central");
+        assertThat(detail.path("origine").asText()).isEqualTo("Gare de Bruxelles-Midi");
         assertThat(detail.path("depart").asText()).isEqualTo(START.plusSeconds(3600).toString());
         assertThat(seatPayments.count()).isZero();assertThat(debts.count()).isZero();
     }
@@ -68,6 +68,39 @@ class TripUpdateIntegrationTests extends ReportingIntegrationSupport {
     @Test void sameVehicleAndSameScheduleDoNotConflictWithTheTripItself()throws Exception{
         long trip=create(local,TypeTrajet.PUBLIC);
         assertThat(call("PUT",path(trip),local,update(vehicle,START,END)).statusCode()).isEqualTo(200);
+    }
+    @ParameterizedTest @CsvSource({"origine,false","destination,false","origine,true","destination,true"})
+    void pendingReservationLocksEachLocationIncludingTheOrganizersPlace(String field,boolean participant)throws Exception{
+        long trip=create(local,TypeTrajet.PUBLIC);
+        if(participant)reserve(trip,vip);
+        var body=update();body.put(field,"Autre gare");
+        refused(trip,local,body,409,"TRIP_LOCATIONS_LOCKED");
+        assertThat(reservations.countByTrajetIdAndStatut(trip,StatutReservation.EN_ATTENTE)).isEqualTo(participant?2:1);
+    }
+    @Test void unchangedLocationsRemainAcceptedAfterExistingWhitespaceNormalization()throws Exception{
+        long trip=create(local,TypeTrajet.PUBLIC);reserve(trip,vip);
+        var body=update();
+        body.put("origine","  Gare de Bruxelles-Midi  ");
+        body.put("destination","  Gare de Liège-Guillemins  ");
+        assertThat(call("PUT",path(trip),local,body).statusCode()).isEqualTo(200);
+        assertThat(trips.findById(trip).orElseThrow().getOrigine()).isEqualTo("Gare de Bruxelles-Midi");
+    }
+    @ParameterizedTest @ValueSource(booleans={false,true})
+    void locationsCanChangeWhenOnlyCancelledReservationsRemain(boolean formerParticipant)throws Exception{
+        long trip=create(local,TypeTrajet.PUBLIC);
+        if(formerParticipant){
+            long waiting=reserve(trip,vip);
+            assertThat(call("POST","/api/reservations/"+waiting+"/annulation",vip,null).statusCode()).isEqualTo(200);
+        }
+        assertThat(call("POST","/api/reservations/"+booking(trip,local)+"/annulation",local,null).statusCode()).isEqualTo(200);
+        var before=jdbc.queryForList("select to_jsonb(r)::text from reservation r order by id",String.class);
+        var body=update();body.put("origine","  Bruxelles-Central  ");body.put("destination","  Namur  ");
+        var response=call("PUT",path(trip),local,body);
+        assertThat(response.statusCode()).as(response.body()).isEqualTo(200);
+        assertThat(trips.findById(trip).orElseThrow().getOrigine()).isEqualTo("Bruxelles-Central");
+        assertThat(trips.findById(trip).orElseThrow().getDestination()).isEqualTo("Namur");
+        assertThat(jdbc.queryForList("select to_jsonb(r)::text from reservation r order by id",String.class)).isEqualTo(before);
+        assertThat(seatPayments.count()).isZero();assertThat(debts.count()).isZero();
     }
     @Test void participantWhoIsNotOrganizerIsForbidden()throws Exception{
         long trip=create(local,TypeTrajet.PUBLIC);reserve(trip,vip);

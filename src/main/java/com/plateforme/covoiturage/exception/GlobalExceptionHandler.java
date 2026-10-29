@@ -104,6 +104,7 @@ public class GlobalExceptionHandler {
             case "TRIP_J1_DUE" -> "La modification ne peut pas déplacer un contrôle J-1 déjà dû.";
             case "TRIP_HAS_DEBT" -> "Une dette liée au trajet empêche sa modification.";
             case "PENDING_RESERVATION_INCOMPATIBLE" -> "Les nouveaux horaires sont incompatibles avec une réservation EN_ATTENTE ; aucune réservation n'a été modifiée.";
+            case "TRIP_LOCATIONS_LOCKED" -> "Les lieux ne peuvent pas être modifiés tant qu'une réservation EN_ATTENTE est active, organisateur inclus. Les horaires et le véhicule restent modifiables sous les autres conditions.";
             default -> "Opération incompatible avec les règles métier.";
         };
         return ResponseEntity.status(409).body(ApiErrorResponse.of(409,ex.getCode(),
