@@ -1,0 +1,125 @@
+<section class="auth-section container">
+  <div class="auth-story">
+    <a routerLink="/" class="back-link">← Retour à l’accueil</a>
+    <p class="eyebrow">BIENVENUE DANS LE RÉSEAU</p>
+    <h1>Ensemble,<br />on va <span>plus loin.</span></h1>
+    <p class="auth-intro">
+      Votre administrateur vous a invité à rejoindre DriveConnect. Quelques instants suffisent pour
+      préparer votre espace.
+    </p>
+    <ol class="activation-steps">
+      <li>
+        <span>01</span>
+        <div>
+          <strong>Recevez votre invitation</strong>
+          <p>Un lien personnel envoyé par votre administrateur.</p>
+        </div>
+      </li>
+      <li>
+        <span>02</span>
+        <div>
+          <strong>Choisissez votre mot de passe</strong>
+          <p>Votre accès reste personnel et confidentiel.</p>
+        </div>
+      </li>
+      <li>
+        <span>03</span>
+        <div>
+          <strong>Connectez-vous</strong>
+          <p>Avec votre matricule ou votre e-mail administrateur.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+  <div class="auth-card">
+    @if (success()) {
+      <div class="success-symbol"><app-icon name="check" /></div>
+      <h2>Votre compte est prêt.</h2>
+      <app-notice
+        tone="success"
+        message="Votre mot de passe a été enregistré. Vous pouvez maintenant vous connecter avec votre identifiant personnel."
+      /><a routerLink="/connexion" class="btn btn-primary w-full"
+        >Aller à la connexion <app-icon name="arrow"
+      /></a>
+    } @else {
+      <span class="step-label">VOTRE PREMIER PAS</span>
+      <h2>Activer mon compte</h2>
+      <p class="card-description">Définissez votre mot de passe pour rejoindre votre espace.</p>
+      @if (error()) {
+        <app-notice tone="error" [message]="error()" />
+      }
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="loading()">
+        <div class="field">
+          <label for="invitation">Code d’invitation</label
+          ><input
+            id="invitation"
+            type="password"
+            formControlName="jeton"
+            autocomplete="off"
+            spellcheck="false"
+            required
+            aria-describedby="invitation-help invitation-error"
+            [attr.aria-invalid]="
+              form.controls.jeton.touched && form.controls.jeton.invalid ? 'true' : null
+            "
+            placeholder="Le code de votre invitation"
+          />
+          <p class="field-hint" id="invitation-help">
+            Prérempli depuis votre lien, ou à copier après « #invitation= ».
+          </p>
+          <p aria-live="polite" class="field-error" id="invitation-error">
+            @if (form.controls.jeton.touched && form.controls.jeton.invalid) {
+              Saisissez le code de 43 caractères fourni dans votre invitation.
+            }
+          </p>
+        </div>
+        <div class="field">
+          <app-password-field
+            fieldId="new-password"
+            label="Choisir un mot de passe"
+            autocomplete="new-password"
+            [control]="form.controls.password"
+            describedBy="new-password-help new-password-error"
+          />
+          <p id="new-password-help" class="field-hint">
+            Au moins 15 caractères et au plus 72 octets. Les caractères accentués peuvent compter
+            pour plusieurs octets.
+          </p>
+          <p id="new-password-error" aria-live="polite" class="field-error">
+            @if (form.controls.password.touched && form.controls.password.invalid) {
+              Choisissez un mot de passe respectant ces deux limites.
+            }
+          </p>
+        </div>
+        <div class="field">
+          <app-password-field
+            fieldId="confirm-password"
+            label="Confirmer le mot de passe"
+            autocomplete="new-password"
+            [control]="form.controls.confirmation"
+            [invalid]="form.controls.confirmation.touched && form.hasError('mismatch')"
+            describedBy="confirmation-error"
+          />
+          <p id="confirmation-error" aria-live="polite" class="field-error">
+            @if (
+              form.controls.confirmation.touched &&
+              (form.hasError('mismatch') || form.controls.confirmation.invalid)
+            ) {
+              Les deux mots de passe doivent être identiques.
+            }
+          </p>
+        </div>
+        <app-submit-button
+          label="Activer mon compte"
+          busyLabel="Activation en cours…"
+          [loading]="loading()"
+        />
+      </form>
+      <p class="session-note">
+        Invitation expirée ou déjà utilisée ? Demandez une nouvelle invitation à votre
+        administrateur.
+      </p>
+      <a routerLink="/connexion" class="text-link">J’ai déjà activé mon compte</a>
+    }
+  </div>
+</section>

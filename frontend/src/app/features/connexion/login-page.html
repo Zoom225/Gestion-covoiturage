@@ -1,0 +1,95 @@
+<section class="auth-section container">
+  <div class="auth-story">
+    <a routerLink="/" class="back-link">← Retour à l’accueil</a>
+    <p class="eyebrow">VOTRE RÉSEAU, VOTRE ESPACE</p>
+    <h1>Le prochain trajet<br />commence <span>ici.</span></h1>
+    <p class="auth-intro">
+      Retrouvez un espace pensé pour simplifier vos déplacements et mieux voyager ensemble.
+    </p>
+    <div class="auth-visual" aria-hidden="true">
+      <span class="visual-dot"></span>
+      <div class="visual-line"></div>
+      <span class="visual-destination"><app-icon name="route" /></span
+      ><span class="visual-label">Un réseau qui vous rapproche.</span>
+    </div>
+    <div class="trust-note">
+      <app-icon name="shield" />
+      <p>Un accès personnel.<br /><strong>Un réseau de confiance.</strong></p>
+    </div>
+  </div>
+  <div class="auth-card">
+    <span class="step-label">HEUREUX DE VOUS RETROUVER</span>
+    <h2>Connexion</h2>
+    <p class="card-description">Accédez à votre espace DriveConnect.</p>
+    @if (expired) {
+      <app-notice message="Votre session a expiré. Reconnectez-vous pour continuer." />
+    }
+    @if (error()) {
+      <app-notice tone="error" [message]="error()" />
+    }
+    @if (unavailable()) {
+      <a routerLink="/connexion-api" class="text-link error-help"
+        >Consulter l’aide à la connexion</a
+      >
+    }
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="loading()">
+      <div class="field">
+        <label for="identifiant">Matricule ou adresse e-mail</label>
+        <input
+          id="identifiant"
+          type="text"
+          formControlName="identifiant"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          required
+          maxlength="100"
+          aria-describedby="identifier-help identifier-error"
+          [attr.aria-invalid]="
+            form.controls.identifiant.touched && form.controls.identifiant.invalid ? 'true' : null
+          "
+          placeholder="Votre identifiant personnel"
+        />
+        <p id="identifier-help" class="field-hint">
+          Client : votre matricule · Administrateur : votre e-mail.
+        </p>
+        <p id="identifier-error" aria-live="polite" class="field-error">
+          @if (form.controls.identifiant.touched && form.controls.identifiant.invalid) {
+            Saisissez votre identifiant (100 caractères maximum).
+          }
+        </p>
+      </div>
+      <div class="field">
+        <app-password-field
+          fieldId="login-password"
+          [control]="form.controls.password"
+          describedBy="password-error"
+        />
+        <p id="password-error" aria-live="polite" class="field-error">
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            Saisissez votre mot de passe (72 octets maximum).
+          }
+        </p>
+      </div>
+      <app-submit-button
+        label="Se connecter"
+        busyLabel="Connexion en cours…"
+        [loading]="loading()"
+      />
+    </form>
+    <div class="auth-card-footer">
+      <app-icon name="mail" />
+      <p>
+        <strong>Vous avez reçu une invitation ?</strong><br /><a
+          routerLink="/activation"
+          class="text-link"
+          >Activer mon compte</a
+        >
+      </p>
+    </div>
+    <p class="session-note">
+      Pour votre confidentialité, une actualisation complète de la page vous demandera de vous
+      reconnecter.
+    </p>
+  </div>
+</section>

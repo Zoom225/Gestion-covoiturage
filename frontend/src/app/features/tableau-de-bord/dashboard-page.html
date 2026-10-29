@@ -1,0 +1,87 @@
+<div class="dashboard-heading">
+  <p class="eyebrow">VOTRE POINT DE DÉPART</p>
+  <h1>Bienvenue dans votre espace.</h1>
+  <p>Votre réseau, vos déplacements, en un même endroit.</p>
+</div>
+@if (auth.user(); as user) {
+  <section class="profile-card" aria-labelledby="profile-heading">
+    <div class="profile-card-top">
+      <span class="profile-avatar"><app-icon name="user" /></span>
+      <div>
+        <h2 id="profile-heading">Mon profil</h2>
+        <p>Les informations de votre compte DriveConnect.</p>
+      </div>
+      <span class="status-pill"><span class="tiny-dot"></span>Connecté</span>
+    </div>
+    <dl class="profile-grid">
+      <div>
+        <dt>Identifiant</dt>
+        <dd>{{ user.identifiant }}</dd>
+      </div>
+      <div>
+        <dt>Type de compte</dt>
+        <dd>{{ user.role === 'ADMIN' ? 'Administrateur' : 'Client' }}</dd>
+      </div>
+      @if (user.categorie) {
+        <div>
+          <dt>Catégorie</dt>
+          <dd>{{ categoryNames[user.categorie] }}</dd>
+        </div>
+      }
+      @if (user.zoneClientId !== null) {
+        <div>
+          <dt>Zone de rattachement</dt>
+          <dd>Zone n° {{ user.zoneClientId }}</dd>
+        </div>
+      }
+      @if (user.perimetreAdmin) {
+        <div>
+          <dt>Périmètre administratif</dt>
+          <dd>{{ user.perimetreAdmin === 'GLOBAL' ? 'Ensemble du réseau' : 'Zone locale' }}</dd>
+        </div>
+      }
+      @if (user.zoneAdminId !== null) {
+        <div>
+          <dt>Zone administrée</dt>
+          <dd>Zone n° {{ user.zoneAdminId }}</dd>
+        </div>
+      }
+    </dl>
+  </section>
+  <section class="dashboard-modules" aria-labelledby="modules-heading">
+    <div class="modules-heading">
+      <h2 id="modules-heading">La suite de votre espace</h2>
+      <span>Prochaines étapes</span>
+    </div>
+    <p class="modules-description">
+      Votre accès est prêt. Ces fonctionnalités seront raccordées dans les prochains lots.
+    </p>
+    <div class="dashboard-module-grid">
+      @if (user.role === 'CLIENT') {
+        @for (module of modules; track module.title) {
+          <article class="module-card">
+            <span class="module-icon"><app-icon [name]="module.icon" /></span
+            ><span class="coming-pill">À venir</span>
+            <h3>{{ module.title }}</h3>
+            <p>{{ module.text }}</p>
+          </article>
+        }
+      } @else {
+        <article class="module-card">
+          <span class="module-icon"><app-icon name="shield" /></span
+          ><span class="coming-pill">À venir</span>
+          <h3>Administration</h3>
+          <p>Les écrans de gestion seront développés selon votre périmètre autorisé.</p>
+        </article>
+      }
+    </div>
+  </section>
+}
+<div class="dashboard-session">
+  <app-icon name="shield" />
+  <p>
+    Votre connexion reste active dans cet onglet jusqu’à son expiration. Une actualisation complète
+    vous demandera de vous reconnecter.
+  </p>
+  <button class="text-link" (click)="auth.logout()">Me déconnecter</button>
+</div>

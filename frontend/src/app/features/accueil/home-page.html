@@ -1,0 +1,138 @@
+<section class="hero">
+  <div class="container hero-grid">
+    <div class="hero-content">
+      <p class="eyebrow"><span class="tiny-dot"></span> LA MOBILITÉ, ENSEMBLE</p>
+      <h1>Moins de détours.<br /><span>Plus de liens.</span></h1>
+      <p class="hero-description">
+        Vos trajets, plus simples et mieux organisés. Un réseau de covoiturage multi-zones pour vous
+        rapprocher, au quotidien.
+      </p>
+      <div class="hero-actions">
+        @if (auth.authenticated()) {
+          <a routerLink="/tableau-de-bord" class="btn btn-primary"
+            >Accéder à mon espace <app-icon name="arrow"
+          /></a>
+        } @else {
+          <a routerLink="/connexion" class="btn btn-primary"
+            >Se connecter <app-icon name="arrow"
+          /></a>
+        }
+        <a href="#decouvrir" class="btn btn-text"
+          >Découvrir DriveConnect <span aria-hidden="true">↘</span></a
+        >
+      </div>
+      <div class="hero-caption">
+        <span class="caption-line"></span>Un réseau. Plusieurs zones. Une même direction.
+      </div>
+    </div>
+    <div
+      class="network-illustration"
+      role="img"
+      aria-label="Illustration d’un réseau reliant plusieurs zones de covoiturage, sans données de trajet réelles."
+    >
+      <div class="map-grid"></div>
+      <div class="map-orbit orbit-one"></div>
+      <div class="map-orbit orbit-two"></div>
+      <svg class="map-routes" viewBox="0 0 560 510" fill="none" aria-hidden="true">
+        <path
+          d="M65 355C80 230 185 380 240 235S380 255 480 95"
+          stroke="#cbdad7"
+          stroke-width="3"
+          stroke-dasharray="6 9"
+        />
+        <path
+          d="M105 130C230 120 120 345 275 330S355 420 485 370"
+          stroke="#93b9ba"
+          stroke-width="2"
+        />
+        <path
+          d="M105 130C250 105 190 245 280 250S365 140 460 155"
+          stroke="#087f78"
+          stroke-width="7"
+          stroke-linecap="round"
+        />
+        <circle cx="105" cy="130" r="12" fill="#087f78" stroke="white" stroke-width="5" />
+        <circle cx="460" cy="155" r="12" fill="#102c40" stroke="white" stroke-width="5" />
+        <circle cx="275" cy="330" r="7" fill="#087f78" stroke="white" stroke-width="4" />
+        <circle cx="485" cy="370" r="7" fill="#102c40" stroke="white" stroke-width="4" />
+      </svg>
+      <div class="map-heading">
+        <span class="tiny-dot"></span> LE RÉSEAU DRIVECONNECT
+        <span class="map-symbol" aria-hidden="true">↗</span>
+      </div>
+      <div class="map-label map-label-start">
+        <span class="label-dot"></span>Votre point de départ
+      </div>
+      <div class="map-label map-label-end">
+        <span class="label-dot dark"></span>Votre destination
+      </div>
+      <div class="map-car" aria-hidden="true">
+        <svg viewBox="0 0 40 40" fill="none">
+          <path
+            d="m10 16 3-7h14l3 7m-20 0h20v14H10V16Zm0 0-3 2v5h3m20-7 3 2v5h-3M14 30v3m12-3v3M14 21h2m8 0h2"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+          />
+        </svg>
+      </div>
+      <div class="map-note">
+        <span class="map-note-icon"><app-icon name="user" /></span>
+        <div>
+          <strong>Les mêmes routes.<br />De nouvelles connexions.</strong>
+          <p>Le covoiturage, tout simplement.</p>
+        </div>
+        <span class="map-note-arrow" aria-hidden="true">↗</span>
+      </div>
+      <span class="map-footnote">Illustration du réseau multi-zones</span>
+    </div>
+  </div>
+</section>
+<section class="service-strip">
+  <div class="container strip-inner">
+    <p><app-icon name="route" />Des trajets multi-zones</p>
+    <p><app-icon name="shield" />Un accès personnel sécurisé</p>
+    <p><app-icon name="calendar" />Une organisation plus simple</p>
+  </div>
+</section>
+<section id="decouvrir" class="discover-section container">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">LE BON TRAJET COMMENCE PAR UN LIEN</p>
+      <h2>Votre mobilité.<br />Un peu plus simple.</h2>
+    </div>
+    <p>
+      De la recherche au suivi de vos déplacements,<br class="desktop-break" />
+      DriveConnect rassemble l’essentiel.
+    </p>
+  </div>
+  <div class="feature-grid">
+    @for (feature of features; track feature.number) {
+      <article class="feature-card">
+        <div class="feature-top">
+          <span class="feature-icon"><app-icon [name]="feature.icon" /></span
+          ><span class="feature-number">{{ feature.number }}</span>
+        </div>
+        <h3>{{ feature.title }}</h3>
+        <p>{{ feature.text }}</p>
+      </article>
+    }
+  </div>
+</section>
+<section class="together-section container">
+  <div class="together-panel">
+    <div>
+      <p class="eyebrow">UN ESPACE QUI VOUS RESSEMBLE</p>
+      <h2>Tout commence<br />par votre compte.</h2>
+      <p>
+        Votre administrateur vous donne accès au réseau.<br />Activez votre compte et préparez votre
+        prochain départ.
+      </p>
+    </div>
+    <div class="together-action">
+      <a routerLink="/activation" class="btn btn-light"
+        >J’ai reçu une invitation <app-icon name="arrow" /></a
+      ><span>Déjà membre ? <a routerLink="/connexion">Connectez-vous</a></span>
+    </div>
+  </div>
+</section>
