@@ -30,8 +30,17 @@ try {
   await page.getByRole('button', { name: 'Activer mon compte', exact: true }).click();
   assert.equal((await invalid).status(), 400);
   await page.getByRole('alert').filter({ hasText: 'invitation' }).waitFor();
+  const protectedResponses = await page.evaluate(async () => {
+    const statuses = [];
+    for (const path of ['/zones?page=0&size=100', '/trajets?page=0&size=12', '/trajets/1']) {
+      const response = await fetch(`http://localhost:8081/api${path}`);
+      statuses.push(response.status);
+    }
+    return statuses;
+  });
+  assert.deepEqual(protectedResponses, [401, 401, 401]);
   console.log(
-    'Recette navigateur → Spring Boot réel : connexion refusée 401, invitation invalide 400 et messages français vérifiés.',
+    'Recette navigateur → Spring Boot réel : connexion refusée 401, invitation invalide 400, zones/recherche/détail sans JWT refusés 401 ; CORS et messages français vérifiés.',
   );
 } finally {
   await browser.close();

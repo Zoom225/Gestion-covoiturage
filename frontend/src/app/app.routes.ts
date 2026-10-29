@@ -53,6 +53,30 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'trajets',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['CLIENT'] },
+    loadComponent: () => import('./layouts/prive/private-layout').then((m) => m.PrivateLayout),
+    children: [
+      {
+        path: '',
+        title: 'Rechercher un trajet · DriveConnect',
+        loadComponent: () =>
+          import('./features/trajets/pages/recherche-trajets/search-trips-page').then(
+            (m) => m.SearchTripsPage,
+          ),
+      },
+      {
+        path: ':id',
+        title: 'Détail du trajet · DriveConnect',
+        loadComponent: () =>
+          import('./features/trajets/pages/detail-trajet/trip-detail-page').then(
+            (m) => m.TripDetailPage,
+          ),
+      },
+    ],
+  },
+  {
     path: '**',
     component: PublicLayout,
     children: [

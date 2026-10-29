@@ -54,16 +54,26 @@
       <span>Prochaines étapes</span>
     </div>
     <p class="modules-description">
-      Votre accès est prêt. Ces fonctionnalités seront raccordées dans les prochains lots.
+      Retrouvez les fonctionnalités disponibles et les prochaines étapes de votre espace.
     </p>
     <div class="dashboard-module-grid">
       @if (user.role === 'CLIENT') {
         @for (module of modules; track module.title) {
           <article class="module-card">
-            <span class="module-icon"><app-icon [name]="module.icon" /></span
-            ><span class="coming-pill">À venir</span>
+            <span class="module-icon"><app-icon [name]="module.icon" /></span>
+            @if (!module.path) {
+              <span class="coming-pill">À venir</span>
+            }
             <h3>{{ module.title }}</h3>
             <p>{{ module.text }}</p>
+            @if (module.path) {
+              <a
+                [routerLink]="module.path"
+                class="text-link"
+                style="display: inline-flex; margin-top: 16px; font-size: 0.8rem"
+                >Accéder à la recherche <app-icon name="arrow"
+              /></a>
+            }
           </article>
         }
       } @else {

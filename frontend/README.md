@@ -1,4 +1,4 @@
-# DriveConnect — socle frontend
+# DriveConnect — frontend
 
 Angular **22.2.3**, CLI **22.2.5**, Tailwind CSS **4.3.3**, TypeScript strict et composants standalone. Node compatible : 22.22.3+, 24.15+ ou 26 ; versions verrouillées dans `package-lock.json`.
 
@@ -24,7 +24,7 @@ src/app/
   core/guards/        AuthGuard, RoleGuard et destination de retour autorisée
   core/interceptors/ JWT limité à l’API et conversion des erreurs HTTP
   core/services/     URL injectable et messages d’erreur français
-  features/          accueil, connexion, activation, tableau-de-bord, erreurs
+  features/          accueil, connexion, activation, tableau-de-bord, trajets, erreurs
   layouts/           cadre public et cadre privé
   shared/components/ logo, en-tête, pied de page, icônes, message, mot de passe, bouton
   shared/models/     contrats TypeScript conformes aux records Java
@@ -39,13 +39,18 @@ Les composants affichent les pages et pilotent leurs formulaires réactifs. `Aut
 | Connexion | POST `/api/auth/login`, corps `{identifiant,password}` |
 | Profil et rôle courant | GET `/api/auth/me`, JWT Bearer |
 | Activation | POST `/api/auth/invitations/accept`, corps `{jeton,password}` ; 204 |
+| Zones autorisées | GET `/api/zones?page=...&size=100` |
+| Recherche par zone | GET `/api/trajets?page=...&size=12&zoneId=...` ; zoneId facultatif |
+| Détail autorisé | GET `/api/trajets/{id}` |
 
 Un CLIENT utilise son **matricule**, un ADMIN son **e-mail**. Le formulaire ne contraint donc pas l’identifiant au format e-mail.
 Le lien émis par le courrier Spring Boot est `/activation#invitation=...`. Le fragment est lu puis retiré de l’URL par remplacement de l’entrée d’historique courante. Le code peut aussi être saisi manuellement. Après activation : connexion normale, sans JWT inventé.
 
 Les règles de mot de passe d’activation sont reprises : 15 points de code Unicode minimum, 72 octets UTF-8 maximum et confirmation identique. La connexion ne réimpose pas une nouvelle règle de longueur minimale aux comptes déjà existants.
 
-Pas d’inscription publique, de refresh token, de module de réservation, paiement ou administration dans ce lot. Le tableau de bord affiche uniquement le profil réellement retourné ; ses cartes « À venir » ne sont pas des liens vers des fonctionnalités fictives.
+Pas d’inscription publique, de refresh token, de module de réservation, paiement ou administration. Le tableau de bord affiche le profil réellement retourné et ouvre la recherche pour les clients ; ses autres cartes « À venir » ne sont pas des liens vers des fonctionnalités fictives.
+
+La recherche et le détail sont réservés au rôle CLIENT, conformément à Spring Boot. Les informations et limites de ce module sont décrites dans [la recette des trajets](docs/recherche-trajets.md).
 
 ## Session et erreurs
 
@@ -54,7 +59,7 @@ Pas d’inscription publique, de refresh token, de module de réservation, paiem
 - L’interceptor ajoute le JWT uniquement à l’origine et au chemin de l’API prévus, sauf connexion/activation publiques. Un ancien 401 n’efface pas une nouvelle session.
 - Déconnexion, expiration serveur et 401 protégé effacent la session. Une actualisation complète exige une reconnexion. Aucun endpoint de déconnexion serveur n’existe : l’effacement est local, le JWT expire selon sa durée serveur.
 - Les guards facilitent la navigation ; Spring Boot reste responsable des autorisations.
-- La redirection après connexion accepte uniquement la route privée de ce lot, jamais une URL externe.
+- La redirection après connexion accepte uniquement les parcours privés explicitement autorisés (tableau de bord, recherche et détail), jamais une URL externe.
 - Les messages HTTP proviennent d’un dictionnaire français isolé, avec repli sûr. Le corps brut et les traces serveur ne sont jamais affichés. Les textes de page restent dans les templates pour permettre une extraction ultérieure si une traduction devient nécessaire.
 
 ## Choix UX/UI
@@ -86,7 +91,7 @@ La base locale était vide de comptes lors de la recette. Une connexion réussie
 
 Le workflow `.github/workflows/frontend.yml` installe avec `npm ci`, compile, exécute les tests unitaires puis les contrôles Chromium et publie les rapports. Le workflow backend est conservé.
 
-### Résultats locaux — 29 octobre 2026
+### Résultats du socle d’authentification — 29 octobre 2026
 
 - `npm run build` : réussi, chargement initial 298,80 ko avant compression (81,57 ko estimés transférés).
 - `npm test -- --watch=false` : **40 tests réussis**, 5 fichiers, aucun test ignoré.
