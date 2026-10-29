@@ -31,6 +31,47 @@ public class TrajetService {
  private final TransactionTemplate transactions;
  private final SensitiveOperationJournal journal;
  private final J1ProcessingService j1;
+ private final VehiculeRepository vehicles;
+ private final PaiementPlaceRepository payments;
+
+ /** Modifie uniquement un trajet encore libre d'engagement, dans la transaction des contrôles. */
+ @Transactional
+ public TrajetResponse update(Authentication actor,long id,UpdateTrajetRequest request){
+  var requester=authorization.require(actor);
+  var trip=locks.tripForUpdate(id,request.vehiculeId());
+  if(!trip.getOrganisateur().getId().equals(requester.getId()))
+   throw new org.springframework.security.access.AccessDeniedException("Acces interdit");
+  policy.requireModifiable(trip,request.depart());
+  if(payments.existsByReservationTrajetId(id))throw new BusinessRuleException("TRIP_HAS_PAYMENT");
+  var vehicle=vehicles.findById(request.vehiculeId()).orElseThrow(ResourceNotFoundException::new);
+  if(!vehicle.isActif())throw new BusinessRuleException("VEHICLE_INACTIVE");
+  var pending=bookings.findByTrajetIdAndStatut(id,StatutReservation.EN_ATTENTE);
+  if(!pending.isEmpty()&&(!java.util.Objects.equals(trip.getOrigine(),request.origine())
+    ||!java.util.Objects.equals(trip.getDestination(),request.destination())))
+   throw new BusinessRuleException("TRIP_LOCATIONS_LOCKED");
+  // Même ordre partagé pour les clients ; aucune réservation n'est migrée ni annulée.
+  var clientIds=new java.util.TreeSet<Long>();
+  clientIds.add(requester.getId());
+  pending.forEach(booking->clientIds.add(booking.getClient().getId()));
+  for(Long clientId:clientIds){
+   var client=locks.client(clientId);
+   if(clientId.equals(requester.getId()))policy.eligible(client,trip.getZone(),request.depart());
+   else requirePendingCompatible(client,trip,request);
+  }
+  availability.requireAvailable(vehicle,request.depart(),request.arrivee());
+  if(trips.overlapsExceptTrip(id,vehicle.getId(),request.depart().minusSeconds(900),request.arrivee().plusSeconds(900)))
+   throw new BusinessRuleException("VEHICLE_CONFLICT");
+  trip.update(vehicle,request.depart(),request.arrivee(),request.origine(),request.destination());
+  trips.flush();
+  journal.record(SensitiveOperationJournal.Action.TRAJET_MODIFIE,actor,SensitiveOperationJournal.Resource.TRAJET,id);
+  return mapper.trajet(trip);
+ }
+ private void requirePendingCompatible(Client client,Trajet trip,UpdateTrajetRequest request){
+  try {policy.eligible(client,trip.getZone(),request.depart());}
+  catch(BusinessRuleException|org.springframework.security.access.AccessDeniedException failure){
+   throw new BusinessRuleException("PENDING_RESERVATION_INCOMPATIBLE");
+  }
+ }
 
  /** Parcourt aussi les arrivées anciennes ; chaque trajet dispose de sa propre transaction, comme à J-1. */
  @Transactional(propagation=Propagation.NOT_SUPPORTED)

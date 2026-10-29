@@ -34,6 +34,23 @@ public class BookingPolicy {
   if(clock.instant().isBefore(trip.getArrivee()))throw new BusinessRuleException("TRIP_ARRIVAL_NOT_PASSED");
  }
  public static final int MAX_CONFIRMED=4;
+ /** Refuse les modifications qui figeraient ou déplaceraient un contrôle J-1 déjà dû. */
+ public void requireModifiable(Trajet trip,Instant departure){
+  if(!trip.getDepart().isAfter(clock.instant()))throw new BusinessRuleException("TRIP_ALREADY_STARTED");
+  if(trip.getStatut()!=StatutTrajet.PLANIFIE)throw new BusinessRuleException("TRIP_NOT_MODIFIABLE");
+  if(trip.isVerificationJ1Requise())throw new BusinessRuleException("TRIP_J1_VERIFICATION_REQUIRED");
+  if(trip.getTraiteJ1Le()!=null)throw new BusinessRuleException("TRIP_J1_ALREADY_PROCESSED");
+  if(trip.getType()==TypeTrajet.PRIVE
+    &&(!clock.instant().isBefore(j1Deadline(trip.getDepart()))||!clock.instant().isBefore(j1Deadline(departure))))
+   throw new BusinessRuleException("TRIP_J1_DUE");
+  if(debts.existsByTrajetId(trip.getId()))throw new BusinessRuleException("TRIP_HAS_DEBT");
+  if(reservations.countByTrajetIdAndStatut(trip.getId(),StatutReservation.CONFIRMEE)>0)
+   throw new BusinessRuleException("TRIP_HAS_CONFIRMED_RESERVATION");
+ }
+ private static Instant j1Deadline(Instant departure){
+  return departure.atZone(ZoneId.of("Europe/Brussels")).toLocalDate().minusDays(1)
+   .atTime(0,15).atZone(ZoneId.of("Europe/Brussels")).toInstant();
+ }
  /**
   * Empêche de préparer l'annulation privée incomplète avant J-1 qui éviterait la dette de 80 EUR (décision de #26, PR #44).
   * Le futur appelant doit authentifier l'organisateur, verrouiller et relire le trajet dans la transaction de mutation.

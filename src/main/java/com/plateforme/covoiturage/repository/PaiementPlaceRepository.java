@@ -5,6 +5,7 @@ import java.util.*;
 public interface PaiementPlaceRepository extends JpaRepository<PaiementPlace,Long> {
  Optional<PaiementPlace> findByCleIdempotence(UUID key);
  Optional<PaiementPlace> findByReservationId(Long id);
+ boolean existsByReservationTrajetId(Long tripId);
  @org.springframework.data.jpa.repository.Query(value="""
   select p.id as "paiementId", 'PLACE' as nature, p.reservation_id as "ressourceId",
          p.montant, p.mode, p.valide_le as "valideLe", p.rembourse_le as "rembourseLe"

@@ -35,6 +35,11 @@ public class Trajet {
  @Column(name="traite_j1_le") private Instant traiteJ1Le;
  @Column(name="verification_j1_requise",nullable=false) private boolean verificationJ1Requise;
  public void becomePublic(){type=TypeTrajet.PUBLIC;}
+ /** Appelé par le service après tous les contrôles, sous les verrous partagés. */
+ public void update(Vehicule vehicle,Instant start,Instant end,String origin,String arrival){
+  origine=location(origin);destination=location(arrival);
+  vehicule=vehicle;depart=start;arrivee=end;
+ }
  /**
   * Enregistre une conversion décidée par le contrôle J-1, sans modifier les dettes existantes.
   */

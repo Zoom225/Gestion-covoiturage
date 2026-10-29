@@ -2,6 +2,7 @@ package com.plateforme.covoiturage.service;
 import com.plateforme.covoiturage.entity.*;
 import com.plateforme.covoiturage.repository.*;
 import com.plateforme.covoiturage.exception.ResourceNotFoundException;
+import com.plateforme.covoiturage.exception.BusinessRuleException;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -31,8 +32,23 @@ public class JourneyLocks {
   * Acquiert les verrous de zone, véhicule et trajet puis relit le trajet pour sérialiser paiement, réservation et traitement J-1.
   */
  public Trajet trip(long id){
+  return lockTrip(id,null);
+ }
+ /** Verrouille aussi le nouveau véhicule, dans l'ordre des identifiants, avant le trajet. */
+ public Trajet tripForUpdate(long id,long vehicleId){
+  return lockTrip(id,vehicleId);
+ }
+ private Trajet lockTrip(long id,Long vehicleId){
   var trip=trips.findById(id).orElseThrow(ResourceNotFoundException::new);
-  zone(trip.getZone().getId());vehicle(trip.getVehicule().getId());
+  zone(trip.getZone().getId());
+  // Une modification peut avoir changé le véhicule pendant l'attente du verrou de zone.
+  entityManager.refresh(trip);
+  long current=trip.getVehicule().getId();
+  long target=vehicleId==null?current:vehicleId;
+  var selected=vehicles.findById(target).orElseThrow(ResourceNotFoundException::new);
+  if(!selected.getZone().getId().equals(trip.getZone().getId()))
+   throw new BusinessRuleException("VEHICLE_ZONE_MISMATCH");
+  java.util.stream.LongStream.of(current,target).distinct().sorted().forEach(this::vehicle);
   trips.lock(id).orElseThrow(ResourceNotFoundException::new);entityManager.refresh(trip);return trip;
  }
  /**
