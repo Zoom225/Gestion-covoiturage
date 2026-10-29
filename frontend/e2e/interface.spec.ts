@@ -1,50 +1,7 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { api, headers, mockApi, signIn } from './support/auth';
 
-// Ces réponses contrôlées appartiennent exclusivement aux tests d'interface.
-const api = 'http://localhost:8081/api';
-const profile = {
-  compteId: 1,
-  identifiant: 'L001',
-  role: 'CLIENT',
-  clientId: 2,
-  categorie: 'LOCAL',
-  zoneClientId: 3,
-  perimetreAdmin: null,
-  zoneAdminId: null,
-};
-const headers = {
-  'access-control-allow-origin': 'http://localhost:4200',
-  'access-control-allow-headers': 'authorization,content-type',
-  'access-control-allow-methods': 'GET,POST,OPTIONS',
-};
-async function mockApi(page: Page, status = 200) {
-  await page.route(`${api}/**`, async (route) => {
-    const req = route.request();
-    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
-    if (req.url() === `${api}/auth/login`)
-      return route.fulfill({
-        status,
-        headers,
-        json:
-          status === 200
-            ? { accessToken: 'jeton-de-test-interface', tokenType: 'Bearer', expiresIn: 900 }
-            : { code: 'UNAUTHORIZED', message: 'java.sql.ne-pas-afficher' },
-      });
-    if (req.url() === `${api}/auth/me`) {
-      expect(req.headers()['authorization']).toBe('Bearer jeton-de-test-interface');
-      return route.fulfill({ headers, json: profile });
-    }
-    return route.abort();
-  });
-}
-async function signIn(page: Page) {
-  await page.goto('/connexion');
-  await page.getByLabel('Matricule ou adresse e-mail').fill('L001');
-  await page.getByLabel('Mot de passe', { exact: true }).fill('mot-de-passe-de-test');
-  await page.getByRole('button', { name: 'Se connecter', exact: true }).click();
-  await expect(page).toHaveURL(/\/tableau-de-bord$/);
-}
 for (const width of [360, 390, 768, 1024, 1440]) {
   test(`pages publiques et privées sans débordement, largeur ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
