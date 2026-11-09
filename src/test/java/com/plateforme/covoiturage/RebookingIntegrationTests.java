@@ -1,7 +1,7 @@
 package com.plateforme.covoiturage;
 
-import com.plateforme.covoiturage.enums.StatutReservation;
-import com.plateforme.covoiturage.enums.TypeTrajet;
+import com.plateforme.covoiturage.entity.enums.StatutReservation;
+import com.plateforme.covoiturage.entity.enums.TypeTrajet;
 import com.plateforme.covoiturage.payment.PaymentGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

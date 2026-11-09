@@ -1,5 +1,5 @@
 package com.plateforme.covoiturage.dto.response;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import java.time.Instant;
 import io.swagger.v3.oas.annotations.media.Schema;
 public record TrajetResponse(Long trajetId,Long zoneId,Long vehiculeId,Long organisateurId,

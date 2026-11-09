@@ -2,7 +2,7 @@ name: Backend
 
 on:
   push:
-    branches: [master, main, 'feature/**', 'chore/**']
+    branches: [master, main, 'feature/**', 'chore/**', 'amelioration/**']
   pull_request:
   workflow_dispatch:
 

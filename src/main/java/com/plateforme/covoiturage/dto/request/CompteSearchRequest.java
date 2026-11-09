@@ -1,7 +1,7 @@
 package com.plateforme.covoiturage.dto.request;
 
-import com.plateforme.covoiturage.enums.CategorieClient;
-import com.plateforme.covoiturage.enums.RoleTechnique;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.RoleTechnique;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 

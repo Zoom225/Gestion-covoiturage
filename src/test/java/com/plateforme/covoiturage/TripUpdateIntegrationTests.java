@@ -2,7 +2,7 @@ package com.plateforme.covoiturage;
 
 import com.plateforme.covoiturage.entity.Compte;
 import com.plateforme.covoiturage.entity.Vehicule;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;

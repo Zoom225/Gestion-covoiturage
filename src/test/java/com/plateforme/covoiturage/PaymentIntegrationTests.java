@@ -1,11 +1,13 @@
 package com.plateforme.covoiturage;
+
+import com.plateforme.covoiturage.service.impl.AvailabilityService;
 import com.plateforme.covoiturage.entity.*;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import com.plateforme.covoiturage.repository.*;
 import com.plateforme.covoiturage.service.*;
 import com.plateforme.covoiturage.payment.PaymentGateway;
 import com.plateforme.covoiturage.exception.*;
-import com.plateforme.covoiturage.scheduling.J1Scheduler;
+import com.plateforme.covoiturage.scheduler.J1Scheduler;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -49,7 +51,7 @@ class PaymentIntegrationTests extends JourneyIntegrationSupport {
    .header("Content-Type","application/json");
   if(origin!=null)request.header("Origin",origin);
   if(key!=null)request.header("Idempotency-Key",key.toString());
-  if(actor!=null)request.header("Authorization","Bearer "+new TokenService(encoder,jwtProperties,Clock.systemUTC()).issue(actor.getId()).accessToken());
+  if(actor!=null)request.header("Authorization","Bearer "+new com.plateforme.covoiturage.service.impl.TokenServiceImpl(encoder,jwtProperties,Clock.systemUTC()).issue(actor.getId()).accessToken());
   return http.send(request.POST(HttpRequest.BodyPublishers.ofString(body==null?"":json.writeValueAsString(body))).build(),HttpResponse.BodyHandlers.ofString());
  }
  String seat(long id){return "/api/reservations/"+id+"/paiements";}

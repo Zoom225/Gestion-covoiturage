@@ -3,7 +3,7 @@ package com.plateforme.covoiturage;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import com.plateforme.covoiturage.exception.*;
 import com.plateforme.covoiturage.payment.PaymentGateway;
 import org.junit.jupiter.api.*;
@@ -40,7 +40,7 @@ class UnexpectedApiErrorIntegrationTests extends ReportingIntegrationSupport {
         var error=read(response);
         assertThat(error.path("status").asInt()).isEqualTo(status);
         assertThat(error.path("code").asText()).isEqualTo("INTERNAL_ERROR");
-        assertThat(error.path("message").asText()).isEqualTo("Erreur interne");
+        assertThat(error.path("message").asText()).isEqualTo("Une erreur interne est survenue. Réessayez plus tard.");
         assertThat(error.path("timestamp").asText()).isNotBlank();
         assertThat(error.path("validationErrors").isArray()).isTrue();
         assertThat(error.path("validationErrors").size()).isZero();
@@ -91,6 +91,8 @@ class UnexpectedApiErrorIntegrationTests extends ReportingIntegrationSupport {
         when(gateway.validate(any(),any())).thenThrow(new PaymentUnavailableException());
         var response=pay(seat(booking(trip,local)),local,UUID.randomUUID(),null);
         assertThat(response.statusCode()).isEqualTo(503);assertThat(read(response).path("code").asText()).isEqualTo("PAYMENT_UNAVAILABLE");
+        assertThat(read(response).path("message").asText())
+                .isEqualTo("Le service de paiement est momentanément indisponible. Réessayez plus tard.");
         assertThat(messages()).isEmpty();
     }
     @Test void securityFailuresNeverReachTheUnexpectedErrorHandler()throws Exception{
@@ -107,7 +109,7 @@ class UnexpectedApiErrorIntegrationTests extends ReportingIntegrationSupport {
     }
     @Test void unsupportedMediaTypeRemains415WithoutLeakingDetails()throws Exception{
         var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/api/dettes/"+Long.MAX_VALUE+"/paiements"))
-                .header("Authorization","Bearer "+new com.plateforme.covoiturage.service.TokenService(encoder,jwtProperties,java.time.Clock.systemUTC()).issue(local.getId()).accessToken())
+                .header("Authorization","Bearer "+new com.plateforme.covoiturage.service.impl.TokenServiceImpl(encoder,jwtProperties,java.time.Clock.systemUTC()).issue(local.getId()).accessToken())
                 .header("Idempotency-Key",UUID.randomUUID().toString()).header("Content-Type","text/plain")
                 .POST(HttpRequest.BodyPublishers.ofString(PRIVATE_DETAIL)).build();
         var response=http.send(request,HttpResponse.BodyHandlers.ofString());
@@ -116,7 +118,7 @@ class UnexpectedApiErrorIntegrationTests extends ReportingIntegrationSupport {
     }
     @Test void malformedJsonRetainsExisting400Contract()throws Exception{
         var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/api/dettes/"+Long.MAX_VALUE+"/paiements"))
-                .header("Authorization","Bearer "+new com.plateforme.covoiturage.service.TokenService(encoder,jwtProperties,java.time.Clock.systemUTC()).issue(local.getId()).accessToken())
+                .header("Authorization","Bearer "+new com.plateforme.covoiturage.service.impl.TokenServiceImpl(encoder,jwtProperties,java.time.Clock.systemUTC()).issue(local.getId()).accessToken())
                 .header("Idempotency-Key",UUID.randomUUID().toString()).header("Content-Type","application/json")
                 .POST(HttpRequest.BodyPublishers.ofString("{")).build();
         var response=http.send(request,HttpResponse.BodyHandlers.ofString());

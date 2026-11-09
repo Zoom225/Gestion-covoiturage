@@ -8,7 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.dao.DataIntegrityViolationException;
 import com.plateforme.covoiturage.entity.*;
-import com.plateforme.covoiturage.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
 import com.plateforme.covoiturage.repository.*;
 import static org.assertj.core.api.Assertions.*;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -51,7 +51,7 @@ class CovoiturageApplicationTests {
 
 	@Test
 	void contextLoads() {
-		assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("21");
+		assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("22");
 		assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
 		assertThat(flyway.migrate().migrationsExecuted).isZero();
 		assertThat(jdbc.queryForObject("select version()", String.class)).contains("PostgreSQL 16.6");

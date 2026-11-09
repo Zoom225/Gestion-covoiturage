@@ -1,8 +1,8 @@
 package com.plateforme.covoiturage;
 
 import com.plateforme.covoiturage.entity.Vehicule;
-import com.plateforme.covoiturage.enums.StatutReservation;
-import com.plateforme.covoiturage.enums.TypeTrajet;
+import com.plateforme.covoiturage.entity.enums.StatutReservation;
+import com.plateforme.covoiturage.entity.enums.TypeTrajet;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;

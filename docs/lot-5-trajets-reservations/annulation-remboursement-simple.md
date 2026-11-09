@@ -1,5 +1,10 @@
 # Annulation et remboursement simulé — étape 1
 
+Mise a jour du 9 novembre 2026 : ce document decrit la premiere etape.
+La [regle actuelle sur les penalites](../regles-annulation-penalites.md) prime :
+aucun remboursement si une penalite est active a l'annulation, sans droit
+retroactif apres reglement.
+
 Issue #50, liée à #26. Les règles validées pour cette étape remplacent la mention historique « aucun remboursement automatique » des lots précédents. Aucun droit d'annuler le trajet entier n'est ajouté.
 
 ## Règles et résultat visible

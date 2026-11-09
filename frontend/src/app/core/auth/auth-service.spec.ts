@@ -6,8 +6,8 @@ import { AuthService } from './auth-service';
 import { AuthApi } from './auth-api';
 import { authInterceptor } from '../interceptors/auth-interceptor';
 import { API_URL } from '../services/api-url';
-import { ApiFailure } from '../services/api-error';
-import { ProfileResponse } from '../../shared/models/auth.models';
+import { ApiFailure } from '../../shared/utils/api-error.util';
+import { ProfileResponse } from '../../shared/models/auth.model';
 import { vi } from 'vitest';
 
 const base = 'http://localhost:8081/api';

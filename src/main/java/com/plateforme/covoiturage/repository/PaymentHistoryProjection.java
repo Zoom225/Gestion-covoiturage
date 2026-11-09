@@ -12,4 +12,5 @@ public interface PaymentHistoryProjection {
     String getMode();
     Instant getValideLe();
     Instant getRembourseLe();
+    boolean getRemboursementRefusePourPenalite();
 }

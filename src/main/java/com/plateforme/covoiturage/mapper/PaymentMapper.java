@@ -5,14 +5,14 @@ import org.springframework.stereotype.Component;
 @Component public class PaymentMapper {
  public PaymentResponse history(com.plateforme.covoiturage.repository.PaymentHistoryProjection p){
   return new PaymentResponse(p.getPaiementId(),p.getNature(),p.getRessourceId(),p.getMontant(),p.getMode(),p.getValideLe(),
-   p.getRembourseLe()==null?java.math.BigDecimal.ZERO:p.getMontant(),p.getRembourseLe());
+   p.getRembourseLe()==null?java.math.BigDecimal.ZERO:p.getMontant(),p.getRembourseLe(),p.getRemboursementRefusePourPenalite());
  }
  public PaymentResponse place(PaiementPlace p){
   return new PaymentResponse(p.getId(),"PLACE",p.getReservation().getId(),p.getMontant(),p.getMode(),p.getValideLe(),
-   p.getRembourseLe()==null?java.math.BigDecimal.ZERO:p.getMontant(),p.getRembourseLe());
+   p.getRembourseLe()==null?java.math.BigDecimal.ZERO:p.getMontant(),p.getRembourseLe(),p.getReservation().isAnnuleAvecPenalite());
  }
  public PaymentResponse debt(PaiementDette p){
-  return new PaymentResponse(p.getId(),"DETTE",p.getDette().getId(),p.getMontant(),p.getMode(),p.getValideLe(),java.math.BigDecimal.ZERO,null);
+  return new PaymentResponse(p.getId(),"DETTE",p.getDette().getId(),p.getMontant(),p.getMode(),p.getValideLe(),java.math.BigDecimal.ZERO,null,false);
  }
  public DetteResponse dette(DetteTrajet d){return new DetteResponse(d.getId(),d.getTrajet().getId(),d.getMontant(),d.getRegle(),d.getStatut());}
 }

@@ -1,6 +1,6 @@
 package com.plateforme.covoiturage.repository;
 import com.plateforme.covoiturage.entity.Reservation;
-import com.plateforme.covoiturage.enums.StatutReservation;
+import com.plateforme.covoiturage.entity.enums.StatutReservation;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.domain.*;
 import java.util.Optional;
@@ -15,7 +15,7 @@ public interface ReservationRepository extends JpaRepository<Reservation,Long> {
  @Query("""
   select (count(p)>0) from PaiementPlace p join p.reservation r
   where r.trajet.id=:tripId and p.valideLe<=:deadline
-   and r.statut=com.plateforme.covoiturage.enums.StatutReservation.ANNULEE
+   and r.statut=com.plateforme.covoiturage.entity.enums.StatutReservation.ANNULEE
    and (r.annuleLe is null or r.annuleLe<p.valideLe)
   """)
  boolean hasUnverifiableJ1History(@Param("tripId") long tripId,@Param("deadline") Instant deadline);
@@ -23,8 +23,8 @@ public interface ReservationRepository extends JpaRepository<Reservation,Long> {
  @Query("""
   select count(p) from PaiementPlace p join p.reservation r
   where r.trajet.id=:tripId and p.valideLe<=:deadline
-   and (r.statut=com.plateforme.covoiturage.enums.StatutReservation.CONFIRMEE
-    or (r.statut=com.plateforme.covoiturage.enums.StatutReservation.ANNULEE and r.annuleLe>:deadline))
+   and (r.statut=com.plateforme.covoiturage.entity.enums.StatutReservation.CONFIRMEE
+    or (r.statut=com.plateforme.covoiturage.entity.enums.StatutReservation.ANNULEE and r.annuleLe>:deadline))
   """)
  long countConfirmedAtJ1(@Param("tripId") long tripId,@Param("deadline") Instant deadline);
  @Override @EntityGraph(attributePaths={"trajet","trajet.zone","client"})

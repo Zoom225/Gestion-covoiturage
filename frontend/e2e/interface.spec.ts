@@ -14,7 +14,7 @@ const profile = {
   zoneAdminId: null,
 };
 const headers = {
-  'access-control-allow-origin': 'http://localhost:4200',
+  'access-control-allow-origin': 'http://localhost:4173',
   'access-control-allow-headers': 'authorization,content-type',
   'access-control-allow-methods': 'GET,POST,OPTIONS',
 };

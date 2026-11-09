@@ -6,7 +6,7 @@ import {
   LoginRequest,
   ProfileResponse,
   TokenResponse,
-} from '../../shared/models/auth.models';
+} from '../../shared/models/auth.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthApi {

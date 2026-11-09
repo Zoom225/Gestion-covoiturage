@@ -1,7 +1,7 @@
 package com.plateforme.covoiturage.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
-import com.plateforme.covoiturage.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
 import jakarta.validation.constraints.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 

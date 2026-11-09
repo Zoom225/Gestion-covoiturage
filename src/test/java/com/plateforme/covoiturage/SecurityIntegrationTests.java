@@ -3,9 +3,9 @@ package com.plateforme.covoiturage;
 import com.plateforme.covoiturage.entity.Client;
 import com.plateforme.covoiturage.entity.Compte;
 import com.plateforme.covoiturage.entity.Zone;
-import com.plateforme.covoiturage.enums.CategorieClient;
-import com.plateforme.covoiturage.enums.PerimetreAdmin;
-import com.plateforme.covoiturage.enums.RoleTechnique;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.PerimetreAdmin;
+import com.plateforme.covoiturage.entity.enums.RoleTechnique;
 import com.plateforme.covoiturage.repository.ClientRepository;
 import com.plateforme.covoiturage.repository.CompteRepository;
 import com.plateforme.covoiturage.repository.ZoneRepository;
@@ -179,7 +179,7 @@ class SecurityIntegrationTests {
         for (var response : List.of(unknown, wrong, disabled)) {
             assertError(response, 401, "UNAUTHORIZED");
             assertThat(mapper.readTree(response.body()).get("message").asText())
-                    .isEqualTo("Authentification requise ou invalide");
+                    .isEqualTo("Authentification requise ou invalide. Vérifiez vos identifiants ou reconnectez-vous.");
             assertThat(response.body()).doesNotContain("unknown", "incorrect", PASSWORD);
         }
     }
@@ -392,7 +392,7 @@ class SecurityIntegrationTests {
             var response = login(identifier, PASSWORD);
             assertError(response, 401, "UNAUTHORIZED");
             assertThat(mapper.readTree(response.body()).get("message").asText())
-                    .isEqualTo("Authentification requise ou invalide");
+                    .isEqualTo("Authentification requise ou invalide. Vérifiez vos identifiants ou reconnectez-vous.");
             assertThat(response.body().contains(identifier)).isFalse();
         }
     }

@@ -1,8 +1,8 @@
 package com.plateforme.covoiturage;
 
 import com.plateforme.covoiturage.entity.Compte;
-import com.plateforme.covoiturage.enums.*;
-import com.plateforme.covoiturage.scheduling.TripCompletionScheduler;
+import com.plateforme.covoiturage.entity.enums.*;
+import com.plateforme.covoiturage.scheduler.TripCompletionScheduler;
 import com.plateforme.covoiturage.service.TrajetService;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;

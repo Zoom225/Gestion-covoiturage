@@ -2,7 +2,7 @@ package com.plateforme.covoiturage;
 
 import com.plateforme.covoiturage.delivery.*;
 import com.plateforme.covoiturage.entity.Compte;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import com.plateforme.covoiturage.repository.CompteRepository;
 import com.plateforme.covoiturage.service.*;
 import org.flywaydb.core.Flyway;

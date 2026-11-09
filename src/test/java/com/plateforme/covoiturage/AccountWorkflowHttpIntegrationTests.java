@@ -2,7 +2,7 @@ package com.plateforme.covoiturage;
 
 import com.plateforme.covoiturage.dto.request.*;
 import com.plateforme.covoiturage.entity.*;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import com.plateforme.covoiturage.exception.InvitationConflictException;
 import com.plateforme.covoiturage.repository.*;
 import com.plateforme.covoiturage.security.ComptePrincipal;

@@ -1,9 +1,9 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, defer, finalize, Subject, switchMap, takeUntil, tap, throwError } from 'rxjs';
-import { LoginRequest, ProfileResponse } from '../../shared/models/auth.models';
+import { LoginRequest, ProfileResponse } from '../../shared/models/auth.model';
 import { AuthApi } from './auth-api';
-import { ApiFailure } from '../services/api-error';
+import { ApiFailure } from '../../shared/utils/api-error.util';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {

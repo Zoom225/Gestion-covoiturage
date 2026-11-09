@@ -1,5 +1,5 @@
 package com.plateforme.covoiturage.dto.request;
-import com.plateforme.covoiturage.enums.TypeTrajet;
+import com.plateforme.covoiturage.entity.enums.TypeTrajet;
 import jakarta.validation.constraints.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;

@@ -2,11 +2,11 @@ package com.plateforme.covoiturage;
 
 import com.plateforme.covoiturage.entity.Client;
 import com.plateforme.covoiturage.entity.Compte;
-import com.plateforme.covoiturage.enums.CategorieClient;
-import com.plateforme.covoiturage.enums.RoleTechnique;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.RoleTechnique;
 import com.plateforme.covoiturage.repository.ClientRepository;
 import com.plateforme.covoiturage.repository.CompteRepository;
-import com.plateforme.covoiturage.service.ClientNumberGenerator;
+import com.plateforme.covoiturage.service.impl.ClientNumberGenerator;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;

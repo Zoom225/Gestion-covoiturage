@@ -1,5 +1,8 @@
 # Contrat API pour Angular
 
+Ce releve historique precede les composants Angular actuels. Pour l'implementation
+et ses limites, consulter [les parcours actuels](../tfe-preuves.md).
+
 Contrat relevé dans les controllers, DTO et services du backend, le 29 octobre 2026.
 Base locale : `http://localhost:8081` (adapter au port choisi). Swagger dev :
 `/swagger-ui/index.html`, schéma complet : `/v3/api-docs`.

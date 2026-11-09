@@ -1,6 +1,6 @@
 package com.plateforme.covoiturage;
 
-import com.plateforme.covoiturage.scheduling.TripCompletionScheduler;
+import com.plateforme.covoiturage.scheduler.TripCompletionScheduler;
 import com.plateforme.covoiturage.service.TrajetService;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;

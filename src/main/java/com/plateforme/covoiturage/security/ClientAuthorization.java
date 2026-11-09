@@ -1,6 +1,6 @@
 package com.plateforme.covoiturage.security;
 import com.plateforme.covoiturage.entity.Client;
-import com.plateforme.covoiturage.enums.RoleTechnique;
+import com.plateforme.covoiturage.entity.enums.RoleTechnique;
 import com.plateforme.covoiturage.repository.CompteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;

@@ -1,5 +1,8 @@
 # Plan Angular — pages raccordées aux API existantes
 
+Etat historique de preparation. Les parcours clients et les comptes
+administratifs sont maintenant raccordes ; voir [les parcours actuels](../tfe-preuves.md).
+
 Préparation uniquement : aucun fichier de frontend/ n'est modifié.
 Contrats et JSON : [contrat-api-angular.md](contrat-api-angular.md).
 

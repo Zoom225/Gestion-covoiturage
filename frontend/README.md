@@ -1,4 +1,29 @@
-# DriveConnect — socle frontend
+# DriveConnect — frontend Angular
+
+Les parcours metier sont accessibles depuis le tableau de bord : recherche par
+zone, detail, creation/modification de trajet, ajout de participant prive,
+reservations, paiement simule, annulation, historique et reglement de dette.
+L'administration permet de consulter les comptes, creer un client et renouveler
+une invitation dans le perimetre autorise. Les ecrans de flotte, zones et
+statistiques restent a raccorder.
+
+Le client HTTP `core/services/covoiturage-api.ts` appelle les API Spring Boot ;
+les guards orientent CLIENT et ADMIN, et le backend verifie les droits.
+Le paiement conserve sa cle d'idempotence apres une erreur reseau.
+Les horaires du formulaire utilisent le fuseau de l'appareil puis sont envoyes
+en UTC ; la liste et le detail affichent le fuseau du trajet.
+
+Pour la defense : [parcours et preuves AA1 a AA11](../docs/tfe-preuves.md).
+
+Validation du 9 novembre 2026 : build et TypeScript strict reussis,
+46 tests Angular et 17 scenarios navigateur reussis. Les six scenarios metier
+ont aussi ete rejoues apres les derniers controles de route sur le build final.
+Les reponses API navigateur sont controlees ; les ecritures reelles sont
+verifiees separement dans les tests PostgreSQL du backend.
+
+Playwright sert un build isole sur **localhost:4173** et refuse de reutiliser un
+serveur existant. Le lancement manuel `npm run preview` reste sur le port 4200 ;
+la variable `PORT` permet d'en choisir un autre.
 
 Angular **22.2.3**, CLI **22.2.5**, Tailwind CSS **4.3.3**, TypeScript strict et composants standalone. Node compatible : 22.22.3+, 24.15+ ou 26 ; versions verrouillées dans `package-lock.json`.
 
@@ -23,11 +48,12 @@ src/app/
   core/auth/          DTO HTTP via AuthApi, session Signals via AuthService, validations
   core/guards/        AuthGuard, RoleGuard et destination de retour autorisée
   core/interceptors/ JWT limité à l’API et conversion des erreurs HTTP
-  core/services/     URL injectable et messages d’erreur français
-  features/          accueil, connexion, activation, tableau-de-bord, erreurs
+  core/services/     URL injectable de l'API
+  features/*/pages/  accueil, connexion, activation, tableau-de-bord, erreurs
   layouts/           cadre public et cadre privé
   shared/components/ logo, en-tête, pied de page, icônes, message, mot de passe, bouton
   shared/models/     contrats TypeScript conformes aux records Java
+  shared/utils/      normalisation des erreurs API
 ```
 
 Les composants affichent les pages et pilotent leurs formulaires réactifs. `AuthApi` est le seul endroit contenant les trois appels HTTP d’authentification. `AuthService` organise la connexion et conserve le profil dans un Signal en lecture seule. Le Router charge les pages à la demande.

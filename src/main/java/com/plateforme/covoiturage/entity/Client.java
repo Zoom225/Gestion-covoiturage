@@ -1,6 +1,6 @@
 package com.plateforme.covoiturage.entity;
 
-import com.plateforme.covoiturage.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

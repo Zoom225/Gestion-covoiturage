@@ -34,10 +34,10 @@ public class GlobalExceptionHandler {
             String reference = java.util.UUID.randomUUID().toString();
             log.error("erreur_interne reference={} type={}", reference, failure.getClass().getName());
             return response.header("X-Error-Id", reference).body(ApiErrorResponse.of(status,
-                    "INTERNAL_ERROR", "Erreur interne", request.getRequestURI()));
+                    "INTERNAL_ERROR", "Une erreur interne est survenue. Réessayez plus tard.", request.getRequestURI()));
         }
         return response.body(ApiErrorResponse.of(status, "HTTP_ERROR",
-                "Requête incompatible avec le protocole HTTP", request.getRequestURI()));
+                "La requête ne peut pas être traitée avec cette méthode ou ce format.", request.getRequestURI()));
     }
 
     @ExceptionHandler(BindException.class)
@@ -89,25 +89,52 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PaymentUnavailableException.class)
     ResponseEntity<ApiErrorResponse> paymentUnavailable(HttpServletRequest request){
         return ResponseEntity.status(503).body(ApiErrorResponse.of(503,"PAYMENT_UNAVAILABLE",
-                "Validation de paiement indisponible",request.getRequestURI()));
+                "Le service de paiement est momentanément indisponible. Réessayez plus tard.",request.getRequestURI()));
     }
 
     @ExceptionHandler(BusinessRuleException.class)
     ResponseEntity<ApiErrorResponse> business(BusinessRuleException ex,HttpServletRequest request){
         String message=switch(ex.getCode()){
-            case "TRIP_ALREADY_STARTED" -> "Un trajet déjà parti ne peut pas être modifié.";
-            case "TRIP_NOT_MODIFIABLE" -> "Seul un trajet PLANIFIE peut être modifié.";
+            case "INVALID_TIMEZONE" -> "Choisissez un fuseau horaire reconnu, par exemple Europe/Brussels.";
+            case "UNAVAILABILITY_TARGET_REQUIRED" -> "Choisissez une seule cible pour l’indisponibilité : une zone ou un véhicule.";
+            case "RESERVATION_NOT_CANCELLED" -> "Le remboursement concerne uniquement une réservation annulée.";
+            case "ACTIVE_DEBT" -> "Une pénalité reste impayée. Réglez entièrement son solde dans « Paiements et dettes » avant de créer un trajet, réserver ou payer une place.";
+            case "ALREADY_PAID" -> "Cette réservation est déjà payée. Retrouvez son paiement dans « Paiements et dettes ».";
+            case "BOOKING_HORIZON" -> "Ce trajet n’est pas encore réservable pour votre catégorie. Les réservations ouvrent 30 jours avant le départ pour les VIP, 10 jours pour les clients locaux et 3 jours pour les occasionnels.";
+            case "DEPARTURE_PASSED" -> "Le départ de ce trajet est atteint. Vous ne pouvez plus réserver, payer ou annuler une place.";
+            case "DUPLICATE_RESERVATION" -> "Vous avez déjà une réservation active pour ce trajet.";
+            case "IDEMPOTENCY_CONFLICT" -> "Cette demande de paiement concerne une autre réservation, une autre dette ou un autre montant. Consultez vos paiements avant de réessayer.";
+            case "INVALID_DEBT_AMOUNT" -> "Le montant doit être positif, comporter au plus deux décimales et ne pas dépasser le solde restant.";
+            case "INVALID_INTERVAL" -> "La date de fin doit être strictement postérieure à la date de début.";
+            case "PENDING_RESERVATION_INCOMPATIBLE" -> "La modification rendrait le trajet inaccessible à un participant ayant réservé. Aucune modification n’a été effectuée.";
+            case "PRIVATE_CANCELLATION_AVOIDS_J1_DEBT" -> "Cette annulation contournerait le contrôle J-1 et la dette prévus pour ce trajet privé.";
+            case "RESOURCE_CHANGED" -> "La ressource a changé pendant l’opération. Actualisez les données puis réessayez.";
+            case "RESOURCE_HAS_TRIP" -> "Cette indisponibilité ne peut pas être créée ou modifiée, car un trajet utilise déjà cette ressource sur la période choisie.";
+            case "RESOURCE_UNAVAILABLE" -> "Ce véhicule ou cette zone n’est pas disponible pour la période sélectionnée.";
+            case "TRIP_ARRIVAL_NOT_PASSED" -> "Le trajet ne peut pas encore être marqué comme réalisé avant son heure d’arrivée.";
+            case "TRIP_ALREADY_STARTED" -> "Vous ne pouvez pas modifier ce trajet après son départ.";
+            case "TRIP_NOT_MODIFIABLE" -> "Ce trajet n’est plus planifié et ne peut pas être modifié.";
             case "TRIP_HAS_CONFIRMED_RESERVATION" -> "Une réservation confirmée empêche la modification du trajet.";
             case "TRIP_HAS_PAYMENT" -> "Un paiement de place historique empêche la modification, même après annulation ou remboursement.";
             case "TRIP_J1_ALREADY_PROCESSED" -> "Le contrôle J-1 a déjà été effectué : le trajet ne peut plus être modifié.";
-            case "TRIP_J1_VERIFICATION_REQUIRED" -> "Une vérification de l'historique J-1 est nécessaire avant toute modification.";
-            case "TRIP_J1_DUE" -> "La modification ne peut pas déplacer un contrôle J-1 déjà dû.";
+            case "TRIP_J1_VERIFICATION_REQUIRED" -> "L’historique de ce trajet doit être vérifié par un administrateur. Contactez-le avant de modifier le trajet.";
+            case "TRIP_J1_DUE" -> "La vérification de la veille du départ est déjà due pour ce trajet privé. Son départ ne peut plus être modifié.";
             case "TRIP_HAS_DEBT" -> "Une dette liée au trajet empêche sa modification.";
-            case "PENDING_RESERVATION_INCOMPATIBLE" -> "Les nouveaux horaires sont incompatibles avec une réservation EN_ATTENTE ; aucune réservation n'a été modifiée.";
-            case "TRIP_LOCATIONS_LOCKED" -> "Les lieux ne peuvent pas être modifiés tant qu'une réservation EN_ATTENTE est active, organisateur inclus. Les horaires et le véhicule restent modifiables sous les autres conditions.";
+            case "TRIP_LOCATIONS_LOCKED" -> "Les lieux de départ et d’arrivée ne peuvent pas être modifiés tant qu’une réservation est en attente. Les horaires et le véhicule restent soumis aux autres règles.";
+            case "TRIP_FULL" -> "Les quatre places passagers de ce trajet sont déjà confirmées. Choisissez un autre trajet.";
+            case "TRIP_NOT_OPEN" -> "Ce trajet n’est plus ouvert aux réservations, car il est annulé, complet ou terminé.";
+            case "VEHICLE_CONFLICT" -> "Ce véhicule est déjà affecté à un trajet incompatible. Un délai de 15 minutes doit être respecté entre deux trajets.";
+            case "VEHICLE_INACTIVE" -> "Ce véhicule est désactivé et ne peut pas être utilisé pour ce trajet.";
+            case "VEHICLE_ZONE_MISMATCH" -> "Ce véhicule ne peut pas être utilisé dans une autre zone que celle du trajet.";
+            case "VIP_REQUIRED" -> "Cette autorisation de zone ne peut être gérée que pour un client VIP.";
+            case "ZONE_TIMEZONE_REQUIRED" -> "Cette zone n’a pas de fuseau horaire configuré. Contactez un administrateur avant de réserver.";
+            case "UNAVAILABILITY_TARGET_IMMUTABLE" -> "La cible (zone ou véhicule) d’une indisponibilité ne peut pas être modifiée.";
+            case "RESERVATION_NOT_PENDING" -> "Cette réservation n’est plus en attente et ne peut pas être réglée.";
             default -> "Opération incompatible avec les règles métier.";
         };
-        return ResponseEntity.status(409).body(ApiErrorResponse.of(409,ex.getCode(),
+        int status = java.util.Set.of("INVALID_TIMEZONE", "UNAVAILABILITY_TARGET_REQUIRED")
+                .contains(ex.getCode()) ? 400 : 409;
+        return ResponseEntity.status(status).body(ApiErrorResponse.of(status,ex.getCode(),
                 message,request.getRequestURI()));
     }
 
@@ -120,30 +147,33 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvitationInvalideException.class)
     ResponseEntity<ApiErrorResponse> invalidInvitation(HttpServletRequest request) {
         return ResponseEntity.badRequest().body(ApiErrorResponse.of(400, "INVALID_INVITATION",
-                "Invitation indisponible ou invalide", request.getRequestURI()));
+                "Cette invitation n’est plus valide ou a déjà été utilisée. Demandez une nouvelle invitation à votre administrateur.",
+                request.getRequestURI()));
     }
 
     @ExceptionHandler(InvitationConflictException.class)
     ResponseEntity<ApiErrorResponse> invitationConflict(HttpServletRequest request) {
         return ResponseEntity.status(409).body(ApiErrorResponse.of(409, "INVITATION_CONFLICT",
-                "Opération d'invitation incompatible avec l'état courant", request.getRequestURI()));
+                "Cette invitation ne peut pas être créée ou renouvelée dans l’état actuel du compte.", request.getRequestURI()));
     }
 
     @ExceptionHandler(InvalidAccountRequestException.class)
     ResponseEntity<ApiErrorResponse> invalidAccount(HttpServletRequest request) {
         return ResponseEntity.badRequest().body(ApiErrorResponse.of(400, "INVALID_REQUEST",
-                "Données de compte invalides", request.getRequestURI()));
+                "Les informations fournies sont invalides. Vérifiez les champs saisis.", request.getRequestURI()));
     }
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     ResponseEntity<ApiErrorResponse> integrity(HttpServletRequest request) {
         return ResponseEntity.status(409).body(ApiErrorResponse.of(409, "ACCOUNT_CONFLICT",
-                "Opération incompatible avec les données existantes", request.getRequestURI()));
+                "Cette opération entre en conflit avec des données existantes. Vérifiez les informations puis réessayez.",
+                request.getRequestURI()));
     }
 
     @ExceptionHandler(DeliveryUnavailableException.class)
     ResponseEntity<ApiErrorResponse> deliveryUnavailable(HttpServletRequest request) {
         return ResponseEntity.status(503).body(ApiErrorResponse.of(503, "DELIVERY_UNAVAILABLE",
-                "Livraison d'invitation indisponible", request.getRequestURI()));
+                "Le service d’envoi des invitations est momentanément indisponible. Réessayez plus tard.",
+                request.getRequestURI()));
     }
 }

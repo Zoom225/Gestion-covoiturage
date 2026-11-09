@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @SecurityRequirement(name="bearerJwt")
 public class TrajetController {
  private final TrajetService trips;
- private final ReservationService bookings;
+
  @PutMapping("/trajets/{id}")
  @Operation(summary="Modifier son trajet avant confirmation et contrôle J-1")
  public ResponseEntity<TrajetResponse> update(@Parameter(hidden=true) Authentication actor,
@@ -38,22 +38,4 @@ public class TrajetController {
  }
  @GetMapping("/trajets/{id}") @Operation(summary="Consulter un trajet visible")
  public TrajetResponse detail(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id){return trips.detail(actor,id);}
- @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode="201",description="Demande EN_ATTENTE créée")
- @PostMapping("/trajets/{id}/reservations") @Operation(summary="Demander sa réservation publique EN_ATTENTE",description="Aucun paiement ni confirmation simulés dans ce parcours.")
- public ResponseEntity<ReservationResponse> reserve(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id){
-  return ResponseEntity.status(201).body(bookings.reserve(actor,id));
- }
- @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode="201",description="Participant EN_ATTENTE ajouté")
- @PostMapping("/trajets/{id}/participants") @Operation(summary="Ajouter un participant privé EN_ATTENTE (organisateur uniquement)")
- public ResponseEntity<ReservationResponse> participant(@Parameter(hidden=true) Authentication actor,@Positive @PathVariable long id,
-  @Valid @RequestBody PrivateParticipantRequest request){return ResponseEntity.status(201).body(bookings.addPrivate(actor,id,request.clientId()));}
- @GetMapping("/reservations/me") @Operation(summary="Consulter uniquement ses réservations")
- public ReferencePageResponse<ReservationResponse> mine(@Parameter(hidden=true) Authentication actor,
-  @Valid @ModelAttribute @ParameterObject ReferencePageRequest page){return bookings.mine(actor,page);}
- @PostMapping("/reservations/{id}/annulation")
- @Operation(summary="Annuler sa réservation avant le départ",description="Le propriétaire seul peut annuler. Une place confirmée est remboursée intégralement en simulation à H-24 ou avant. Paiements et dettes restent conservés. Le remboursement est consultable dans GET /api/paiements/me.")
- public ResponseEntity<ReservationResponse> cancelBooking(@Parameter(hidden=true) Authentication actor,
-  @Positive @PathVariable long id){
-  return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(bookings.cancel(actor,id));
- }
 }

@@ -1,10 +1,12 @@
 package com.plateforme.covoiturage;
 
+import com.plateforme.covoiturage.service.impl.SensitiveOperationJournal;
+
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.plateforme.covoiturage.dto.request.ZoneWriteRequest;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import com.plateforme.covoiturage.service.*;
 import org.junit.jupiter.api.*;
 import org.slf4j.LoggerFactory;

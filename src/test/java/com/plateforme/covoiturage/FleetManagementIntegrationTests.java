@@ -1,7 +1,7 @@
 package com.plateforme.covoiturage;
 
 import com.plateforme.covoiturage.entity.*;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

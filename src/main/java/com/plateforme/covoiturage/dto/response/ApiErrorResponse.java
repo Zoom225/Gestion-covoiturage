@@ -12,10 +12,12 @@ public record ApiErrorResponse(Instant timestamp, int status, String code, Strin
     }
 
     public static ApiErrorResponse unauthorized(String path) {
-        return of(401, "UNAUTHORIZED", "Authentification requise ou invalide", path);
+        return of(401, "UNAUTHORIZED",
+                "Authentification requise ou invalide. Vérifiez vos identifiants ou reconnectez-vous.", path);
     }
 
     public static ApiErrorResponse forbidden(String path) {
-        return of(403, "FORBIDDEN", "Accès interdit", path);
+        return of(403, "FORBIDDEN",
+                "Vous ne disposez pas des autorisations nécessaires pour effectuer cette action.", path);
     }
 }

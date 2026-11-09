@@ -1,8 +1,8 @@
 package com.plateforme.covoiturage.dto.response;
 
-import com.plateforme.covoiturage.enums.CategorieClient;
-import com.plateforme.covoiturage.enums.PerimetreAdmin;
-import com.plateforme.covoiturage.enums.RoleTechnique;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.PerimetreAdmin;
+import com.plateforme.covoiturage.entity.enums.RoleTechnique;
 
 public record ProfileResponse(Long compteId, String identifiant, RoleTechnique role,
                               Long clientId, CategorieClient categorie, Long zoneClientId,

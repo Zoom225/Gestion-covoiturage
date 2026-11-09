@@ -1,5 +1,5 @@
 package com.plateforme.covoiturage.entity;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;

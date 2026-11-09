@@ -2,7 +2,7 @@ name: Frontend
 
 on:
   push:
-    branches: [master, 'fonctionnalite/frontend-socle-authentification']
+    branches: [master, main, 'feature/**', 'fonctionnalite/**', 'chore/**', 'amelioration/**']
     paths: ['frontend/**', '.github/workflows/frontend.yml']
   pull_request:
     paths: ['frontend/**', '.github/workflows/frontend.yml']

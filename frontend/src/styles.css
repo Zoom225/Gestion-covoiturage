@@ -1470,3 +1470,103 @@
     transition: none !important;
   }
 }
+
+/* Parcours métier : formulaires, listes et tableaux lisibles sur petit écran. */
+.business-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+.business-grid {
+  display: grid;
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+}
+.business-card {
+  padding: 1.5rem;
+  border: 1px solid #d6dedb;
+  border-radius: 1rem;
+  background: #fff;
+}
+.business-card h2,
+.business-card h3 {
+  margin-top: 0;
+}
+.business-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 48rem;
+}
+.business-form label,
+.business-actions label {
+  display: grid;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+.business-form input,
+.business-form select,
+.business-actions select {
+  padding: 0.75rem;
+  border: 1px solid #83968f;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #172d24;
+  width: 100%;
+  min-width: 0;
+}
+.business-form input:focus-visible,
+.business-form select:focus-visible,
+.business-actions select:focus-visible {
+  outline: 3px solid #387d60;
+  outline-offset: 2px;
+}
+.business-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+}
+.business-details dd {
+  margin: 0.3rem 0;
+}
+.business-confirm {
+  border-left: 4px solid #387d60;
+  padding: 1rem;
+  background: #f0f5f2;
+}
+.business-confirm button {
+  margin: 0.5rem;
+}
+.business-table {
+  width: 100%;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+.business-table table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.business-table caption {
+  text-align: left;
+  padding: 1rem 0;
+}
+.business-table th,
+.business-table td {
+  padding: 0.8rem;
+  border-bottom: 1px solid #d6dedb;
+}
+.business-actions .btn-secondary,
+.business-card .btn-secondary {
+  border: 1px solid #387d60;
+  background: #fff;
+  color: #172d24;
+}
+.workspace-main section {
+  margin-bottom: 1.5rem;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}

@@ -1,7 +1,7 @@
 package com.plateforme.covoiturage;
 
-import com.plateforme.covoiturage.enums.StatutReservation;
-import com.plateforme.covoiturage.enums.TypeTrajet;
+import com.plateforme.covoiturage.entity.enums.StatutReservation;
+import com.plateforme.covoiturage.entity.enums.TypeTrajet;
 import com.plateforme.covoiturage.payment.PaymentGateway;
 import com.plateforme.covoiturage.exception.PaymentUnavailableException;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -34,6 +35,72 @@ class ReservationCancellationIntegrationTests extends ReportingIntegrationSuppor
     }
 
     private String cancel(long id) { return "/api/reservations/" + id + "/annulation"; }
+
+    private long penalizeOrganizer(long trip) {
+        jdbc.update("insert into dette_trajet(trajet_id,client_id) values(?,?)", trip, local.getClient().getId());
+        return jdbc.queryForObject("select id from dette_trajet where trajet_id=?", Long.class, trip);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "20.00"})
+    void activePenaltyExcludesRefundAndLaterSettlementCannotReopenIt(String alreadyPaid) throws Exception {
+        long trip = create(local, TypeTrajet.PUBLIC);
+        long booking = booking(trip, local);
+        paySeat(trip, local);
+        long debt = penalizeOrganizer(trip);
+        if (new BigDecimal(alreadyPaid).signum() > 0) payDebt(debt, local, alreadyPaid);
+
+        var cancelled = call("POST", cancel(booking), local, null);
+        assertThat(cancelled.statusCode()).isEqualTo(200);
+        assertThat(read(cancelled).path("annuleAvecPenalite").asBoolean()).isTrue();
+        assertThat(reservations.findById(booking).orElseThrow().isAnnuleAvecPenalite()).isTrue();
+        assertThat(seatPayments.findByReservationId(booking).orElseThrow().getRembourseLe()).isNull();
+        assertThat(debts.findById(debt).orElseThrow().getStatut()).isEqualTo("ACTIVE");
+        var history = read(call("GET", "/api/paiements/me", local, null)).path("content");
+        boolean placeFound = false;
+        for (var payment : history) {
+            if ("PLACE".equals(payment.path("nature").asText())) {
+                placeFound = true;
+                assertThat(payment.path("montantRembourse").decimalValue()).isEqualByComparingTo("0");
+                assertThat(payment.path("remboursementRefusePourPenalite").asBoolean()).isTrue();
+            }
+        }
+        assertThat(placeFound).isTrue();
+
+        payDebt(debt, local, new BigDecimal("80").subtract(new BigDecimal(alreadyPaid)).toPlainString());
+        assertThat(debts.findById(debt).orElseThrow().getStatut()).isEqualTo("REGULARISEE");
+        var replay = call("POST", cancel(booking), local, null);
+        assertThat(replay.statusCode()).isEqualTo(200);
+        assertThat(read(replay).path("annuleAvecPenalite").asBoolean()).isTrue();
+        assertThat(seatPayments.findByReservationId(booking).orElseThrow().getRembourseLe()).isNull();
+        verify(gateway, never()).refund(any(), any());
+        // Même une écriture SQL directe ne peut créer un remboursement rétroactif.
+        assertThatThrownBy(() -> jdbc.update(
+                "update paiement_place set rembourse_le=valide_le where reservation_id=?", booking))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
+
+    @Test void databaseAlsoRejectsRefundWhilePenaltyIsActive() throws Exception {
+        long trip = create(local, TypeTrajet.PUBLIC);
+        paySeat(trip, local);
+        penalizeOrganizer(trip);
+        assertThatThrownBy(() -> jdbc.update(
+                "update paiement_place set rembourse_le=valide_le where reservation_id=?", booking(trip, local)))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThat(seatPayments.findByReservationId(booking(trip, local)).orElseThrow().getRembourseLe()).isNull();
+    }
+
+    @Test void penaltyFullySettledBeforeCancellationDoesNotBlockEligibleRefund() throws Exception {
+        long trip = create(local, TypeTrajet.PUBLIC);
+        paySeat(trip, local);
+        long debt = penalizeOrganizer(trip);
+        payDebt(debt, local, "80");
+        var cancelled = call("POST", cancel(booking(trip, local)), local, null);
+        assertThat(cancelled.statusCode()).isEqualTo(200);
+        assertThat(read(cancelled).path("annuleAvecPenalite").asBoolean()).isFalse();
+        assertThat(seatPayments.findByReservationId(booking(trip, local)).orElseThrow().getRembourseLe()).isEqualTo(NOW);
+        verify(gateway).refund(any(), any());
+    }
 
     @ParameterizedTest
     @CsvSource({"25,20.00", "24,20.00", "23,0.00"})
@@ -131,7 +198,7 @@ class ReservationCancellationIntegrationTests extends ReportingIntegrationSuppor
 
     @Test void refundFailureRollsBackCancellationAndCapacityThenAllowsRetry() throws Exception {
         long trip = create(local, TypeTrajet.PUBLIC);
-        var fourth = account("O980100", com.plateforme.covoiturage.enums.CategorieClient.OCCASIONNEL, null);
+        var fourth = account("O980100", com.plateforme.covoiturage.entity.enums.CategorieClient.OCCASIONNEL, null);
         long booking = reserve(trip, vip);
         reserve(trip, occasional);
         reserve(trip, fourth);

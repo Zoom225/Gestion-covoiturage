@@ -1,7 +1,7 @@
 package com.plateforme.covoiturage;
 
-import com.plateforme.covoiturage.enums.StatutReservation;
-import com.plateforme.covoiturage.enums.TypeTrajet;
+import com.plateforme.covoiturage.entity.enums.StatutReservation;
+import com.plateforme.covoiturage.entity.enums.TypeTrajet;
 import com.plateforme.covoiturage.payment.PaymentGateway;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +29,7 @@ class CancellationIntegrityIntegrationTests extends ReportingIntegrationSupport 
 
     @Test void paidCancellationKeepsPaymentAndDebtReopensCapacityAndNeedsNewPayment() throws Exception {
         long trip = create(local, TypeTrajet.PUBLIC);
-        var fourth = account("O980100", com.plateforme.covoiturage.enums.CategorieClient.OCCASIONNEL, null);
+        var fourth = account("O980100", com.plateforme.covoiturage.entity.enums.CategorieClient.OCCASIONNEL, null);
         long oldVip = reserve(trip, vip);
         long occasionalBooking = reserve(trip, occasional);
         long fourthBooking = reserve(trip, fourth);

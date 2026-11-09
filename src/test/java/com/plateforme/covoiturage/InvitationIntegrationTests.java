@@ -4,7 +4,7 @@ import com.plateforme.covoiturage.entity.Client;
 import com.plateforme.covoiturage.entity.Compte;
 import com.plateforme.covoiturage.entity.Invitation;
 import com.plateforme.covoiturage.entity.Zone;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import com.plateforme.covoiturage.exception.*;
 import com.plateforme.covoiturage.repository.*;
 import com.plateforme.covoiturage.security.InvitationProperties;
@@ -366,7 +366,7 @@ class InvitationIntegrationTests {
 
     @Test
     void missingDurationOutsideDevFailsClosedBeforeAnyEmission() {
-        var unconfigured = new InvitationService(comptes, invitations, new InvitationProperties(null), clock);
+        var unconfigured = new com.plateforme.covoiturage.service.impl.InvitationServiceImpl(comptes, invitations, new InvitationProperties(null), clock);
         assertThatThrownBy(() -> unconfigured.emettre(account.getId())).isInstanceOf(IllegalStateException.class);
         assertThat(invitations.count()).isZero();
     }
@@ -379,7 +379,7 @@ class InvitationIntegrationTests {
 
     @Test
     void configuredDurationCanDifferFromTheDevelopmentDefault() {
-        var configured = new InvitationService(comptes, invitations,
+        var configured = new com.plateforme.covoiturage.service.impl.InvitationServiceImpl(comptes, invitations,
                 new InvitationProperties(Duration.ofMinutes(30)), clock);
         var issued = transaction.execute(status -> configured.emettre(account.getId()));
         assertThat(issued.expireA()).isEqualTo(START.plusSeconds(1800));

@@ -1,8 +1,8 @@
 package com.plateforme.covoiturage;
 
 import com.plateforme.covoiturage.dto.request.*;
-import com.plateforme.covoiturage.enums.CategorieClient;
-import com.plateforme.covoiturage.enums.TypeTrajet;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.TypeTrajet;
 import jakarta.validation.MessageInterpolator;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;

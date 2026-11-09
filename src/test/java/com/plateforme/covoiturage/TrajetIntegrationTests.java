@@ -1,6 +1,6 @@
 package com.plateforme.covoiturage;
 import com.plateforme.covoiturage.entity.*;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import com.plateforme.covoiturage.repository.*;
 import com.plateforme.covoiturage.service.*;
 import com.plateforme.covoiturage.security.*;
@@ -42,16 +42,16 @@ class TrajetIntegrationTests extends JourneyIntegrationSupport {
   var client=switch(category){case VIP->vip.getClient();case LOCAL->local.getClient();case OCCASIONNEL->occasional.getClient();};
   Instant departure=NOW.atZone(ZoneId.of("Europe/Brussels")).plusDays(days).toInstant();
   clock.set(NOW.minusSeconds(1));
-  assertThatThrownBy(()->policy.eligible(client,home,departure)).isInstanceOf(com.plateforme.covoiturage.exception.BusinessRuleException.class);
-  clock.set(NOW);policy.eligible(client,home,departure);
-  assertThatThrownBy(()->policy.eligible(client,home,NOW)).isInstanceOf(com.plateforme.covoiturage.exception.BusinessRuleException.class);
+  assertThatThrownBy(()->policy.requireEligible(client,home,departure)).isInstanceOf(com.plateforme.covoiturage.exception.BusinessRuleException.class);
+  clock.set(NOW);policy.requireEligible(client,home,departure);
+  assertThatThrownBy(()->policy.requireEligible(client,home,NOW)).isInstanceOf(com.plateforme.covoiturage.exception.BusinessRuleException.class);
  }
  @Test void daylightSavingUsesZoneCalendarWithDepartureHour(){
   Instant departure=Instant.parse("2027-03-29T10:00:00Z");
   var open=departure.atZone(ZoneId.of("Europe/Brussels")).minusDays(3).toInstant();
-  clock.set(open);policy.eligible(occasional.getClient(),home,departure);
+  clock.set(open);policy.requireEligible(occasional.getClient(),home,departure);
   clock.set(open.minusSeconds(1));
-  assertThatThrownBy(()->policy.eligible(occasional.getClient(),home,departure)).isInstanceOf(com.plateforme.covoiturage.exception.BusinessRuleException.class);
+  assertThatThrownBy(()->policy.requireEligible(occasional.getClient(),home,departure)).isInstanceOf(com.plateforme.covoiturage.exception.BusinessRuleException.class);
  }
  @ParameterizedTest @ValueSource(strings={"anonymous","admin","wrongLocal","vipNoGrant","inactive"})
  void unauthorizedOrOutOfScopeCannotCreate(String kind)throws Exception{

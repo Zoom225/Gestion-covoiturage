@@ -3,7 +3,7 @@ import { HttpInterceptorFn } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../auth/auth-service';
 import { API_URL, isApiRequest, isPublicAuthRequest } from '../services/api-url';
-import { toApiFailure } from '../services/api-error';
+import { toApiFailure } from '../../shared/utils/api-error.util';
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const base = inject(API_URL);

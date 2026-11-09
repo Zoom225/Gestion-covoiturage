@@ -1,5 +1,11 @@
 # DriveConnect — Backend
 
+Architecture du TFE : [organisation des dossiers et responsabilites](docs/architecture-tfe.md).
+
+Demonstration : [parcours fonctionnels et preuves AA1 a AA11](docs/tfe-preuves.md).
+
+Regle actuelle : [annulation et exclusion des remboursements avec penalite](docs/regles-annulation-penalites.md).
+
 Backend Java Spring Boot de la plateforme de gestion d’un réseau de covoiturage multi-zones.
 
 ## Démarrage local Windows — version récente

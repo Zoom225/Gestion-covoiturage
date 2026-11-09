@@ -51,4 +51,6 @@ const server = createServer(async (request, response) => {
     response.end('Le build local n’est pas disponible. Exécutez npm run build.');
   }
 });
-server.listen(4200, 'localhost', () => console.log('Recette DriveConnect : http://localhost:4200'));
+const port = Number(process.env['PORT'] ?? 4200);
+if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Port de recette invalide.');
+server.listen(port, 'localhost', () => console.log(`Recette DriveConnect : http://localhost:${port}`));

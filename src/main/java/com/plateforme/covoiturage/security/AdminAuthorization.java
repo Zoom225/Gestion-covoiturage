@@ -1,8 +1,8 @@
 package com.plateforme.covoiturage.security;
 
 import com.plateforme.covoiturage.dto.response.ProfileResponse;
-import com.plateforme.covoiturage.enums.PerimetreAdmin;
-import com.plateforme.covoiturage.enums.RoleTechnique;
+import com.plateforme.covoiturage.entity.enums.PerimetreAdmin;
+import com.plateforme.covoiturage.entity.enums.RoleTechnique;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -48,9 +48,9 @@ public class AdminAuthorization {
      * Autorise GLOBAL sur le réseau et LOCAL uniquement pour créer un client LOCAL dans sa propre zone.
      */
     public void requireClientCreation(Authentication actor,
-            com.plateforme.covoiturage.enums.CategorieClient category, Long zoneId) {
+            com.plateforme.covoiturage.entity.enums.CategorieClient category, Long zoneId) {
         Long scope = requireAccountReadZone(actor);
-        if (scope != null && (category != com.plateforme.covoiturage.enums.CategorieClient.LOCAL
+        if (scope != null && (category != com.plateforme.covoiturage.entity.enums.CategorieClient.LOCAL
                 || !scope.equals(zoneId))) throw new AccessDeniedException("Accès interdit");
     }
 

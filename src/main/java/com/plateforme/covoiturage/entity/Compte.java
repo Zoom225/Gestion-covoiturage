@@ -1,8 +1,8 @@
 package com.plateforme.covoiturage.entity;
 
-import com.plateforme.covoiturage.enums.EtatIdentifiants;
-import com.plateforme.covoiturage.enums.PerimetreAdmin;
-import com.plateforme.covoiturage.enums.RoleTechnique;
+import com.plateforme.covoiturage.entity.enums.EtatIdentifiants;
+import com.plateforme.covoiturage.entity.enums.PerimetreAdmin;
+import com.plateforme.covoiturage.entity.enums.RoleTechnique;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

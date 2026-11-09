@@ -8,11 +8,13 @@ public interface PaiementPlaceRepository extends JpaRepository<PaiementPlace,Lon
  boolean existsByReservationTrajetId(Long tripId);
  @org.springframework.data.jpa.repository.Query(value="""
   select p.id as "paiementId", 'PLACE' as nature, p.reservation_id as "ressourceId",
-         p.montant, p.mode, p.valide_le as "valideLe", p.rembourse_le as "rembourseLe"
+         p.montant, p.mode, p.valide_le as "valideLe", p.rembourse_le as "rembourseLe",
+         r.annule_avec_penalite as "remboursementRefusePourPenalite"
     from paiement_place p join reservation r on r.id=p.reservation_id where r.client_id=:clientId
   union all
   select p.id as "paiementId", 'DETTE' as nature, p.dette_id as "ressourceId",
-         p.montant, p.mode, p.valide_le as "valideLe", null::timestamptz as "rembourseLe"
+         p.montant, p.mode, p.valide_le as "valideLe", null::timestamptz as "rembourseLe",
+         false as "remboursementRefusePourPenalite"
     from paiement_dette p join dette_trajet d on d.id=p.dette_id where d.client_id=:clientId
   order by "valideLe" desc, nature asc, "paiementId" desc
   """,countQuery="""

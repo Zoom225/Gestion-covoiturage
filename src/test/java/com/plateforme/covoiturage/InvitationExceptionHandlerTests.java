@@ -28,6 +28,9 @@ class InvitationExceptionHandlerTests {
         assertThat(response.getStatus()).isEqualTo(kind.equals("invalid") ? 400 : 409);
         assertThat(response.getContentAsString()).contains(kind.equals("invalid")
                 ? "INVALID_INVITATION" : "INVITATION_CONFLICT")
+                .contains(kind.equals("invalid")
+                        ? "Cette invitation n’est plus valide ou a déjà été utilisée."
+                        : "Cette invitation ne peut pas être créée ou renouvelée dans l’état actuel du compte.")
                 .doesNotContain("stackTrace", "password", "hash", "Bearer", "Exception");
     }
 }

@@ -1,6 +1,8 @@
 package com.plateforme.covoiturage;
+
+import com.plateforme.covoiturage.service.impl.BookingPolicy;
 import com.plateforme.covoiturage.entity.*;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import com.plateforme.covoiturage.repository.*;
 import com.plateforme.covoiturage.service.*;
 import com.plateforme.covoiturage.security.*;
@@ -93,7 +95,7 @@ abstract class JourneyIntegrationSupport {
  }
  HttpResponse<String> call(String method,String path,Compte actor,Object body)throws Exception{
   var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+path)).header("Content-Type","application/json");
-  if(actor!=null)request.header("Authorization","Bearer "+new TokenService(encoder,jwtProperties,Clock.systemUTC()).issue(actor.getId()).accessToken());
+  if(actor!=null)request.header("Authorization","Bearer "+new com.plateforme.covoiturage.service.impl.TokenServiceImpl(encoder,jwtProperties,Clock.systemUTC()).issue(actor.getId()).accessToken());
   String payload=body==null?"":json.writeValueAsString(body);
   return http.send(request.method(method,HttpRequest.BodyPublishers.ofString(payload)).build(),HttpResponse.BodyHandlers.ofString());
  }

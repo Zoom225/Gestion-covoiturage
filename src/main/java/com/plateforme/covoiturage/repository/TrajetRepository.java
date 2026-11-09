@@ -35,14 +35,14 @@ public interface TrajetRepository extends JpaRepository<Trajet,Long>,JpaSpecific
  Optional<Trajet> findById(Long id);
  @Query(value="select id from trajet where id=:id for update",nativeQuery=true)
  Optional<Long> lock(@Param("id") long id);
- @Query("select (count(t)>0) from Trajet t where t.vehicule.id=:vehicle and t.statut<>com.plateforme.covoiturage.enums.StatutTrajet.ANNULE and t.depart<:end and t.arrivee>:start")
+ @Query("select (count(t)>0) from Trajet t where t.vehicule.id=:vehicle and t.statut<>com.plateforme.covoiturage.entity.enums.StatutTrajet.ANNULE and t.depart<:end and t.arrivee>:start")
  boolean overlaps(@Param("vehicle") long vehicle,@Param("start") Instant start,@Param("end") Instant end);
- @Query("select (count(t)>0) from Trajet t where t.id<>:id and t.vehicule.id=:vehicle and t.statut<>com.plateforme.covoiturage.enums.StatutTrajet.ANNULE and t.depart<:end and t.arrivee>:start")
+ @Query("select (count(t)>0) from Trajet t where t.id<>:id and t.vehicule.id=:vehicle and t.statut<>com.plateforme.covoiturage.entity.enums.StatutTrajet.ANNULE and t.depart<:end and t.arrivee>:start")
  boolean overlapsExceptTrip(@Param("id") long id,@Param("vehicle") long vehicle,@Param("start") Instant start,@Param("end") Instant end);
- @Query("select (count(t)>0) from Trajet t where t.zone.id=:zone and (:vehicle is null or t.vehicule.id=:vehicle) and t.statut<>com.plateforme.covoiturage.enums.StatutTrajet.ANNULE and t.depart<:end and t.arrivee>:start")
+ @Query("select (count(t)>0) from Trajet t where t.zone.id=:zone and (:vehicle is null or t.vehicule.id=:vehicle) and t.statut<>com.plateforme.covoiturage.entity.enums.StatutTrajet.ANNULE and t.depart<:end and t.arrivee>:start")
  boolean resourceOverlaps(@Param("zone") long zone,@Param("vehicle") Long vehicle,@Param("start") Instant start,@Param("end") Instant end);
- @Query("select t.id from Trajet t where t.id>:after and t.type=com.plateforme.covoiturage.enums.TypeTrajet.PRIVE and t.statut<>com.plateforme.covoiturage.enums.StatutTrajet.ANNULE and t.traiteJ1Le is null and t.depart<:until order by t.id")
+ @Query("select t.id from Trajet t where t.id>:after and t.type=com.plateforme.covoiturage.entity.enums.TypeTrajet.PRIVE and t.statut<>com.plateforme.covoiturage.entity.enums.StatutTrajet.ANNULE and t.traiteJ1Le is null and t.depart<:until order by t.id")
  List<Long> j1Candidates(@Param("after") long after,@Param("until") Instant until,Pageable page);
- @Query("select t.id from Trajet t where t.id>:after and t.arrivee<=:now and t.statut in (com.plateforme.covoiturage.enums.StatutTrajet.PLANIFIE,com.plateforme.covoiturage.enums.StatutTrajet.COMPLET) order by t.id")
+ @Query("select t.id from Trajet t where t.id>:after and t.arrivee<=:now and t.statut in (com.plateforme.covoiturage.entity.enums.StatutTrajet.PLANIFIE,com.plateforme.covoiturage.entity.enums.StatutTrajet.COMPLET) order by t.id")
  List<Long> completionCandidates(@Param("after") long after,@Param("now") Instant now,Pageable page);
 }

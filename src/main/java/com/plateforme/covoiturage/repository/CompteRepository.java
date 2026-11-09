@@ -17,8 +17,8 @@ public interface CompteRepository extends JpaRepository<Compte, Long>, JpaSpecif
     @Query(value = "select 1 from pg_advisory_xact_lock(2423001)", nativeQuery = true)
     Integer verrouillerAdministrationGlobale();
 
-    boolean existsByRoleAndPerimetreAdmin(com.plateforme.covoiturage.enums.RoleTechnique role,
-                                          com.plateforme.covoiturage.enums.PerimetreAdmin perimetre);
+    boolean existsByRoleAndPerimetreAdmin(com.plateforme.covoiturage.entity.enums.RoleTechnique role,
+                                          com.plateforme.covoiturage.entity.enums.PerimetreAdmin perimetre);
 
     @EntityGraph(attributePaths = {"client", "client.zone", "zoneAdmin"})
     // Use the same PostgreSQL lower() expression as the unique index in V4.

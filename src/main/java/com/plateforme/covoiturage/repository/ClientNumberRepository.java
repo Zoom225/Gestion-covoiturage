@@ -1,6 +1,6 @@
 package com.plateforme.covoiturage.repository;
 
-import com.plateforme.covoiturage.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;

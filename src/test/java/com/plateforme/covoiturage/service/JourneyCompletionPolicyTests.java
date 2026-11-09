@@ -1,12 +1,16 @@
 package com.plateforme.covoiturage.service;
 
+import com.plateforme.covoiturage.repository.ZoneAccessRepository;
+
+import com.plateforme.covoiturage.service.impl.BookingPolicy;
+
 import com.plateforme.covoiturage.entity.Client;
 import com.plateforme.covoiturage.entity.Trajet;
 import com.plateforme.covoiturage.entity.Vehicule;
 import com.plateforme.covoiturage.entity.Zone;
-import com.plateforme.covoiturage.enums.CategorieClient;
-import com.plateforme.covoiturage.enums.StatutTrajet;
-import com.plateforme.covoiturage.enums.TypeTrajet;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.StatutTrajet;
+import com.plateforme.covoiturage.entity.enums.TypeTrajet;
 import com.plateforme.covoiturage.exception.BusinessRuleException;
 import com.plateforme.covoiturage.repository.DetteTrajetRepository;
 import com.plateforme.covoiturage.repository.ReservationRepository;
@@ -30,7 +34,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @ExtendWith(MockitoExtension.class)
 class JourneyCompletionPolicyTests {
     private static final Instant ARRIVAL=Instant.parse("2027-03-28T01:30:00Z");
-    @Mock ZoneAccessPolicy zones;
+    @Mock ZoneAccessRepository zones;
     @Mock DetteTrajetRepository debts;
     @Mock ReservationRepository reservations;
 

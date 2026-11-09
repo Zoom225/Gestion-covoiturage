@@ -2,7 +2,7 @@ import { FormControl, FormGroup } from '@angular/forms';
 import { invitationPassword, notBlank, passwordBytes, passwordsMatch } from './auth-validators';
 import { safeReturnUrl } from '../guards/safe-return-url';
 import { HttpErrorResponse } from '@angular/common/http';
-import { toApiFailure } from '../services/api-error';
+import { toApiFailure } from '../../shared/utils/api-error.util';
 
 describe('Validation conforme au backend et messages français', () => {
   it('refuse les identifiants vides ou uniquement composés d’espaces', () => {

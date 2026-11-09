@@ -1,8 +1,12 @@
 package com.plateforme.covoiturage;
 
+import com.plateforme.covoiturage.service.impl.BookingPolicy;
+
+import com.plateforme.covoiturage.service.impl.AvailabilityService;
+
 import com.plateforme.covoiturage.dto.request.ReferencePageRequest;
 import com.plateforme.covoiturage.entity.*;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import com.plateforme.covoiturage.repository.*;
 import com.plateforme.covoiturage.security.ComptePrincipal;
 import com.plateforme.covoiturage.service.*;
@@ -51,7 +55,7 @@ class ReferentielIntegrationTests {
     @Autowired TokenService tokens;
     @Autowired AuthService auth;
     @Autowired ReferentielService service;
-    @Autowired ZoneAccessPolicy access;
+    @Autowired BookingPolicy access;
     @Autowired AvailabilityService availability;
     @Autowired JdbcTemplate jdbc;
     @Autowired DataSource dataSource;

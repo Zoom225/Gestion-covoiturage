@@ -1,7 +1,7 @@
 package com.plateforme.covoiturage;
 
 import com.plateforme.covoiturage.entity.*;
-import com.plateforme.covoiturage.enums.*;
+import com.plateforme.covoiturage.entity.enums.*;
 import com.plateforme.covoiturage.repository.*;
 import com.plateforme.covoiturage.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +28,7 @@ abstract class ReportingIntegrationSupport extends JourneyIntegrationSupport {
     HttpResponse<String> pay(String path,Compte actor,UUID key,Object body)throws Exception{
         var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+path))
                 .header("Content-Type","application/json").header("Idempotency-Key",key.toString())
-                .header("Authorization","Bearer "+new TokenService(encoder,jwtProperties,Clock.systemUTC()).issue(actor.getId()).accessToken());
+                .header("Authorization","Bearer "+new com.plateforme.covoiturage.service.impl.TokenServiceImpl(encoder,jwtProperties,Clock.systemUTC()).issue(actor.getId()).accessToken());
         return http.send(request.POST(HttpRequest.BodyPublishers.ofString(body==null?"":json.writeValueAsString(body))).build(),HttpResponse.BodyHandlers.ofString());
     }
     long booking(long trip,Compte actor){

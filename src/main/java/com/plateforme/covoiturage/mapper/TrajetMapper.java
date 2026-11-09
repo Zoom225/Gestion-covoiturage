@@ -9,8 +9,4 @@ public class TrajetMapper {
    t.getDepart(),t.getArrivee(),t.getZone().getFuseauHoraire(),t.getType(),t.getStatut(),t.getOrigine(),t.getDestination(),
    t.getTraiteJ1Le(),t.isVerificationJ1Requise());
  }
- public ReservationResponse reservation(Reservation r){
-  return new ReservationResponse(r.getId(),r.getTrajet().getId(),r.getClient().getId(),r.getStatut(),
-   r.getTrajet().getOrganisateur().getId().equals(r.getClient().getId()),r.getAnnuleLe());
- }
 }

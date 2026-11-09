@@ -1,7 +1,7 @@
 package com.plateforme.covoiturage.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
-import com.plateforme.covoiturage.enums.PerimetreAdmin;
+import com.plateforme.covoiturage.entity.enums.PerimetreAdmin;
 import jakarta.validation.constraints.*;
 
 public record CreateAdministrateurRequest(

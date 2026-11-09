@@ -45,3 +45,13 @@ build/
 /src/main/java/com/plateforme/covoiturage/comptes-demo.local.md
 /src/main/java/com/plateforme/covoiturage/comptes-demo.local.csv
 /scripts/demo/comptes-demo.local.md
+
+# Rapports locaux de verification et diagnostics JVM ; ne pas publier de dumps.
+/.verification/
+/hs_err_pid*.log
+/replay_pid*.log
+/pending-locations-*.log
+/pending-locations-exitcode.txt
+/startup-final.log
+/targeted-final.log
+/verify-pr55-final.log

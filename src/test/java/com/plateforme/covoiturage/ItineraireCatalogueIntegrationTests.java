@@ -2,9 +2,9 @@ package com.plateforme.covoiturage;
 
 import com.plateforme.covoiturage.entity.Compte;
 import com.plateforme.covoiturage.entity.Vehicule;
-import com.plateforme.covoiturage.enums.CategorieClient;
-import com.plateforme.covoiturage.enums.StatutReservation;
-import com.plateforme.covoiturage.enums.TypeTrajet;
+import com.plateforme.covoiturage.entity.enums.CategorieClient;
+import com.plateforme.covoiturage.entity.enums.StatutReservation;
+import com.plateforme.covoiturage.entity.enums.TypeTrajet;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
