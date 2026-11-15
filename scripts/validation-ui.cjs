@@ -14,7 +14,9 @@ const { default: AxeBuilder } = require(
   ),
 );
 const phase = process.env.UI_PHASE || "before";
-const output = path.join(project, ".local-validation/ui", phase);
+const output = path.join(project, ".local-validation/ui", process.env.UI_OUTPUT || phase);
+const widths = (process.env.UI_WIDTHS || '375,768,1440').split(',').map(Number);
+assert.ok(widths.length > 0 && widths.length <= 10 && widths.every(w => Number.isInteger(w) && w >= 320 && w <= 3840), 'Largeurs de validation invalides');
 fs.mkdirSync(output, { recursive: true });
 const root = path.join(project, "frontend/dist/frontend/browser");
 const server = http.createServer((req, res) => {
@@ -35,6 +37,7 @@ const server = http.createServer((req, res) => {
       ".js": "text/javascript",
       ".css": "text/css",
       ".svg": "image/svg+xml",
+      ".webp": "image/webp",
       ".ico": "image/x-icon",
     }[path.extname(file)] || "application/octet-stream",
   );
@@ -290,7 +293,7 @@ async function session(page, role) {
     ];
     for (const [role, url, name] of pages) {
       await session(page, role);
-      for (const width of [375, 768, 1440]) {
+      for (const width of widths) {
         await page.setViewportSize({ width, height: 1000 });
         await page.goto("http://127.0.0.1:4201" + url, {
           waitUntil: "networkidle",
@@ -349,6 +352,11 @@ async function session(page, role) {
       }
     }
     if (phase === "after") {
+      if (process.env.UI_CAROUSEL === 'true') {
+        await session(page, 'guest');
+        await require('./validation-carousel.cjs')(page, report, output);
+        await require('./validation-carousel.cjs').validateZoom({chromium, mock, session, report, output});
+      }
       await session(page, "guest");
       await page.goto("http://127.0.0.1:4201/voyageur", {
         waitUntil: "networkidle",
@@ -412,7 +420,7 @@ async function session(page, role) {
         .first()
         .click();
       await page.getByRole("dialog").waitFor();
-      for (const width of [375, 768, 1440]) {
+      for (const width of widths) {
         await page.setViewportSize({ width, height: 1000 });
         const overflow = await page.evaluate(
           () => document.documentElement.scrollWidth > innerWidth + 1,
@@ -556,7 +564,7 @@ async function session(page, role) {
       await page
         .locator("#absence-91")
         .fill("Absence verifiee — demonstration UI sans base de donnees.");
-      for (const width of [375, 768, 1440]) {
+      for (const width of widths) {
         await page.setViewportSize({ width, height: 1000 });
         const overflow = await page.evaluate(
           () => document.documentElement.scrollWidth > innerWidth + 1,
@@ -615,7 +623,7 @@ async function session(page, role) {
       await page
         .getByText("Historique de démonstration UI", { exact: false })
         .waitFor();
-      for (const width of [375, 768, 1440]) {
+      for (const width of widths) {
         await page.setViewportSize({ width, height: 1000 });
         report.pages.push({
           name: "historique-restrictions",

@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TrajetsApiService } from '../../core/api/trajets-api.service';
 import { RechercheTrajet, VilleOption } from '../models/trajet.model';
 import { differentCitiesValidator } from '../validators/different-cities.validator';
@@ -18,6 +19,7 @@ import { differentCitiesValidator } from '../validators/different-cities.validat
     MatFormFieldModule,
     MatSelectModule,
     MatInputModule,
+    MatProgressSpinnerModule,
   ],
   template: `
     <form
@@ -29,6 +31,7 @@ import { differentCitiesValidator } from '../validators/different-cities.validat
     >
       <mat-form-field appearance="outline"
         ><mat-label>{{ language.t('transport.departure') }}</mat-label>
+        <svg matPrefix class="ui-icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/></svg>
         <mat-select formControlName="depart"
           ><mat-option value="">{{ language.t('transport.allCities') }}</mat-option>
           @for (ville of villes(); track ville.code) {
@@ -38,6 +41,7 @@ import { differentCitiesValidator } from '../validators/different-cities.validat
       </mat-form-field>
       <mat-form-field appearance="outline"
         ><mat-label>{{ language.t('transport.destination') }}</mat-label>
+        <svg matPrefix class="ui-icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2"/></svg>
         <mat-select formControlName="arrivee"
           ><mat-option value="">{{ language.t('transport.allCities') }}</mat-option>
           @for (ville of villes(); track ville.code) {
@@ -47,9 +51,10 @@ import { differentCitiesValidator } from '../validators/different-cities.validat
       </mat-form-field>
       <mat-form-field appearance="outline"
         ><mat-label>{{ language.t('transport.travelDate') }}</mat-label
-        ><input matInput type="date" formControlName="date"
+        ><svg matPrefix class="ui-icon search-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v5m8-5v5M4 11h16"/></svg><input matInput type="date" formControlName="date"
       /></mat-form-field>
       <button mat-flat-button type="submit" [disabled]="chargementVilles() || form.invalid">
+        @if (chargementVilles()) { <mat-spinner diameter="18" [attr.aria-label]="language.t('transport.searching')" /> }
         {{ language.t('transport.search') }}
       </button>
     </form>
@@ -74,6 +79,7 @@ import { differentCitiesValidator } from '../validators/different-cities.validat
       mat-form-field {
         min-width: 0;
       }
+      .search-icon { width: 19px; height: 19px; color: var(--ui-teal-strong); margin-inline: .75rem .25rem; }
       button {
         min-height: 56px;
       }

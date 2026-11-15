@@ -68,7 +68,7 @@ import { LanguageService } from '../../../core/i18n/language.service';
             >Autoriser ce voyageur à proposer des trajets comme chauffeur</mat-checkbox
           >
           @if (!editingId()) {
-            <mat-form-field appearance="outline"
+            <mat-form-field appearance="outline" subscriptSizing="dynamic"
               ><mat-label>Mot de passe initial personnel</mat-label>
               <input
                 matInput
@@ -84,7 +84,7 @@ import { LanguageService } from '../../../core/i18n/language.service';
               >
             </mat-form-field>
           }
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>{{ language.t('admin.voyageurs.matricule') }}</mat-label>
             <input
               matInput
@@ -317,10 +317,12 @@ import { LanguageService } from '../../../core/i18n/language.service';
     <style>
       .adm-header {
         background: linear-gradient(120deg, var(--ui-navy), var(--ui-primary-strong));
-        padding: 1.5rem 2rem;
+        padding: 1.5rem clamp(1rem, 3vw, 2rem);
       }
       .adm-header-content {
         display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
         align-items: center;
         justify-content: space-between;
         max-width: 1200px;
@@ -328,6 +330,8 @@ import { LanguageService } from '../../../core/i18n/language.service';
       }
       .adm-header-left {
         display: flex;
+        min-width: 0;
+        flex: 1 1 220px;
         align-items: center;
         gap: 1rem;
       }
@@ -357,6 +361,8 @@ import { LanguageService } from '../../../core/i18n/language.service';
         padding: 1.5rem;
         border-left: 5px solid var(--ui-teal-strong);
       }
+      .adm-header-left > div { min-width: 0; }
+      .adm-search-input { min-width: 0; }
       .adm-form-header {
         display: flex;
         align-items: center;

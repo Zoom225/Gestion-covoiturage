@@ -2,7 +2,7 @@ name: Validation GestionTransport
 
 on:
   pull_request:
-    branches: [develop, master]
+    branches: [develop, master, feature/issue-6-bannieres-agences-transport]
   push:
     branches: [develop]
 

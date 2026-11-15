@@ -113,7 +113,7 @@ import { LanguageService } from '../../../core/i18n/language.service';
     <style>
       .login-shell {
         display: flex;
-        min-height: calc(100vh - 64px);
+        min-height: min(680px, calc(100dvh - 64px));
       }
       .login-hero {
         flex: 1;
@@ -187,6 +187,7 @@ import { LanguageService } from '../../../core/i18n/language.service';
 
       .login-form-panel {
         flex: 1;
+        min-width: 0;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -199,13 +200,15 @@ import { LanguageService } from '../../../core/i18n/language.service';
         background: var(--ui-surface);
         border-radius: 1.5rem;
         box-shadow: var(--ui-shadow);
-        padding: 2.5rem 2rem;
+        padding: clamp(1.25rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem);
+        min-width: 0;
         border-top: 5px solid var(--ui-primary-strong);
       }
       .login-form-header {
         text-align: center;
         margin-bottom: 1.5rem;
       }
+      @media(max-width: 767px) { .login-shell { min-height: auto; } }
       .login-form-icon {
         font-size: 2.5rem;
       }

@@ -5,14 +5,15 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { TrajetDetailComponent } from './trajet-detail.component';
 import { MatButtonModule } from '@angular/material/button';
 import { TrajetResponse } from '../models/trajet.model';
+import { RevealOnScrollDirective } from '../directives/reveal-on-scroll.directive';
 
 @Component({
   selector: 'app-trajet-card',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatDialogModule],
+  imports: [CommonModule, MatButtonModule, MatDialogModule, RevealOnScrollDirective],
   template: `
-    <article class="trip-card" [attr.data-trajet-id]="trajet.id">
-      <div class="trip-visual" aria-hidden="true"><img src="images/mobilite-transport.svg" width="1000" height="600" alt="" loading="lazy" decoding="async" /></div>
+    <article appReveal class="trip-card" [attr.data-trajet-id]="trajet.id">
+      <div class="trip-visual"><img src="images/car-famille-640.webp" width="640" height="360" alt="" loading="lazy" decoding="async" /><span>{{ language.t('carousel.illustration') }}</span></div>
       <div class="trip-top">
         <span class="type">{{ trajet.typeTrajet }}</span><span
           >{{ trajet.date | date: 'dd/MM/yyyy' }} · {{ trajet.heureDebut.slice(0, 5) }}</span
@@ -76,8 +77,10 @@ import { TrajetResponse } from '../models/trajet.model';
         box-shadow: var(--ui-shadow-raised);
         border-color: var(--ui-primary);
       }
-      .trip-visual { height: 120px; margin: -0.5rem -0.5rem 1.25rem; overflow: hidden; border-radius: 12px; background: var(--ui-primary-soft); }
-      .trip-visual img { width: 100%; height: 100%; object-fit: contain; }
+      .trip-visual { position: relative; height: 155px; margin: -1.5rem -1.5rem 1.25rem; overflow: hidden; border-radius: var(--ui-radius) var(--ui-radius) 0 0; background: var(--ui-primary-soft); }
+      .trip-visual img { width: 100%; height: 100%; object-fit: cover; }
+      .trip-visual span { position: absolute; bottom: .5rem; inset-inline: .5rem; border-radius: 6px; padding: .2rem .4rem; background: rgb(11 31 51 / 90%); color: var(--ui-surface); font-size: .65rem; }
+      @media(hover: hover) and (prefers-reduced-motion: no-preference) { .trip-card:hover { transform: translateY(-3px); } }
       .trip-top,
       .trip-bottom,
       .actions {
@@ -100,7 +103,7 @@ import { TrajetResponse } from '../models/trajet.model';
         color: var(--ui-primary-strong);
       }
       h3 {
-        font-size: 1.4rem;
+        font-size: clamp(1.125rem, 1.8vw, 1.375rem);
         color: var(--ui-navy);
         margin: 1.5rem 0 1.25rem;
         line-height: 1.4;
