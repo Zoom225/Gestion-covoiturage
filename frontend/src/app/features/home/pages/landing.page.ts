@@ -8,6 +8,7 @@ import { VoyageurSessionService } from '../../../core/auth/voyageur-session.serv
 import { TrajetSearchComponent } from '../../../shared/components/trajet-search.component';
 import { TrajetCardComponent } from '../../../shared/components/trajet-card.component';
 import { RechercheTrajet, TrajetResponse } from '../../../shared/models/trajet.model';
+import { CarHeroCarouselComponent } from '../../../shared/components/car-hero-carousel.component';
 
 @Component({
   selector: 'app-landing-page',
@@ -18,42 +19,17 @@ import { RechercheTrajet, TrajetResponse } from '../../../shared/models/trajet.m
     MatProgressSpinnerModule,
     TrajetSearchComponent,
     TrajetCardComponent,
+    CarHeroCarouselComponent,
   ],
   template: `
-    <section class="welcome">
-      <div class="welcome-inner">
-        <div class="hero-copy">
-          <p class="eyebrow">{{ language.t('transport.eyebrow') }}</p>
-          <h1>
-            {{ language.t('transport.together') }}<br /><em>{{
-              language.t('transport.simply')
-            }}</em>
-          </h1>
-          <p class="lead">{{ language.t('transport.lead') }}</p>
-          <div class="trust">
-            <span>✓ {{ language.t('transport.driverKnown') }}</span
-            ><span>✓ {{ language.t('transport.maximum') }}</span
-            ><span>✓ {{ language.t('transport.price') }}</span>
-          </div>
-        </div>
-        <aside class="hero-note" [attr.aria-label]="language.t('ui.illustration')">
-          <img
-            [src]="photoFailed() ? 'images/covoiturage-belgique.svg' : 'images/mobilite-transport.svg'"
-            (error)="photoFailed.set(true)"
-            width="480"
-            height="300"
-            [alt]="language.t('design.carAlt')"
-            fetchpriority="high"
-          />
-          <p>
-            {{ language.t('transport.lessCars') }}<br />{{ language.t('transport.moreMeetings') }}
-          </p>
-          <span>{{ language.t('transport.startHere') }}</span>
-        </aside>
-      </div>
-    </section>
+    <app-car-hero-carousel />
     <div class="content">
-      <div class="search-panel"><app-trajet-search (recherche)="rechercher($event)" /></div>
+      <div id="recherche" tabindex="-1" class="search-panel"><app-trajet-search (recherche)="rechercher($event)" /></div>
+      <section class="benefits" [attr.aria-label]="language.t('benefits.label')">
+        <article><span aria-hidden="true">✓</span><div><h2>{{ language.t('benefits.driverTitle') }}</h2><p>{{ language.t('benefits.driverBody') }}</p></div></article>
+        <article><span aria-hidden="true">€</span><div><h2>{{ language.t('benefits.priceTitle') }}</h2><p>{{ language.t('benefits.priceBody') }}</p></div></article>
+        <article><span aria-hidden="true">↗</span><div><h2>{{ language.t('benefits.simpleTitle') }}</h2><p>{{ language.t('benefits.simpleBody') }}</p></div></article>
+      </section>
       <section id="trajets" class="available" aria-labelledby="available-title">
         <div class="section-title">
           <div>
@@ -113,7 +89,7 @@ import { RechercheTrajet, TrajetResponse } from '../../../shared/models/trajet.m
           </button>
         </div>
       </section>
-      <section class="how">
+      <section id="fonctionnement" class="how">
         <p class="eyebrow">{{ language.t('transport.withYou') }}</p>
         <h2>{{ language.t('transport.how') }}</h2>
         <div class="steps">
@@ -148,22 +124,7 @@ import { RechercheTrajet, TrajetResponse } from '../../../shared/models/trajet.m
       :host {
         display: block;
       }
-      .welcome {
-        background: var(--ui-surface);
-        border-bottom: 1px solid var(--ui-border);
-        padding: 4.5rem 1.5rem 6rem;
-      }
-      .welcome-inner,
-      .content {
-        max-width: 1200px;
-        margin-inline: auto;
-      }
-      .welcome-inner {
-        display: grid;
-        grid-template-columns: 1.2fr 1fr;
-        align-items: center;
-        gap: 3rem;
-      }
+      .content { max-width: 1200px; margin-inline: auto; }
       .eyebrow {
         font-size: 0.72rem;
         font-weight: 750;
@@ -172,80 +133,28 @@ import { RechercheTrajet, TrajetResponse } from '../../../shared/models/trajet.m
         text-transform: uppercase;
         margin: 0 0 1rem;
       }
-      h1 {
-        font-size: clamp(2.5rem, 4.8vw, 4.7rem);
-        line-height: 1.08;
-        letter-spacing: -0.045em;
-        margin: 0;
-        color: var(--ui-navy);
-      }
-      h1 em {
-        font-style: normal;
-        color: var(--ui-primary);
-      }
-      .lead {
-        color: var(--ui-text-secondary);
-        font-size: 1.05rem;
-        line-height: 1.85;
-        max-width: 34rem;
-        margin: 1.5rem 0;
-      }
-      .trust {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        font-size: 0.77rem;
-        font-weight: 600;
-        color: var(--ui-teal-strong);
-      }
-      .trust span {
-        padding: 0.4rem 0.65rem;
-        border: 1px solid var(--ui-border);
-        border-radius: 7px;
-      }
-      .hero-note {
-        margin: 0;
-        padding: 1rem;
-        background: var(--ui-primary-soft);
-        border: 1px solid var(--ui-border);
-        border-radius: 28px;
-      }
-      .hero-note img {
-        display: block;
-        width: 100%;
-        height: auto;
-        object-fit: contain;
-        border-radius: 20px;
-      }
-      .hero-note p {
-        color: var(--ui-navy);
-        font-size: 1.1rem;
-        font-weight: 700;
-        margin: 0.5rem 1rem;
-      }
-      .hero-note > span {
-        display: block;
-        color: var(--ui-text-secondary);
-        font-size: 0.8rem;
-        margin: 0 1rem 1rem;
-      }
       .content {
         padding: 0 1.5rem;
       }
       .search-panel {
         position: relative;
         padding: 1.5rem;
-        margin-top: -2.5rem;
+        margin-top: -3.5rem;
         border: 1px solid var(--ui-border);
         background: var(--ui-surface);
-        border-radius: 18px;
+        border-radius: var(--ui-radius-large);
         box-shadow: var(--ui-shadow-raised);
       }
       .available,
       .popular,
       .how {
-        padding-top: 4rem;
+        padding-top: var(--ui-space-section);
       }
+      .benefits { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1.75rem; padding-top: 2.75rem; }
+      .benefits article { display: flex; gap: 1rem; align-items: start; }
+      .benefits article > span { display: grid; place-items: center; width: 44px; min-width: 44px; height: 44px; border-radius: 14px; background: var(--ui-teal-soft); color: var(--ui-teal-strong); font-weight: 750; }
+      .benefits h2 { font-size: 1rem; margin: 0 0 .5rem; letter-spacing: -.015em; }
+      .benefits p { font-size: .9rem; color: var(--ui-text-secondary); margin: 0; }
       .section-title {
         display: flex;
         align-items: end;
@@ -368,9 +277,7 @@ import { RechercheTrajet, TrajetResponse } from '../../../shared/models/trajet.m
         .popular-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
-        .welcome-inner {
-          gap: 2rem;
-        }
+
         .steps {
           gap: 1rem;
         }
@@ -379,16 +286,7 @@ import { RechercheTrajet, TrajetResponse } from '../../../shared/models/trajet.m
         }
       }
       @media (max-width: 700px) {
-        .welcome {
-          padding: 2.5rem 1rem 5rem;
-        }
-        .welcome-inner {
-          grid-template-columns: 1fr;
-        }
-        .hero-note {
-          display: block;
-        }
-        .hero-note img { height: 210px; }
+
         .content {
           padding: 0 1rem;
         }
@@ -397,7 +295,8 @@ import { RechercheTrajet, TrajetResponse } from '../../../shared/models/trajet.m
         }
         .trip-grid,
         .popular-grid,
-        .steps {
+        .steps,
+        .benefits {
           grid-template-columns: 1fr;
         }
         .available,
@@ -414,7 +313,6 @@ import { RechercheTrajet, TrajetResponse } from '../../../shared/models/trajet.m
   ],
 })
 export class LandingPage {
-  readonly photoFailed = signal(false);
   readonly language = inject(LanguageService);
   private readonly api = inject(TrajetsApiService);
   private readonly router = inject(Router);

@@ -17,6 +17,7 @@ export class LanguageService {
       if (typeof document !== 'undefined') {
         document.documentElement.lang = locale;
         document.documentElement.dir = 'ltr';
+        document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content', this.t('seo.description'));
       }
 
       try {

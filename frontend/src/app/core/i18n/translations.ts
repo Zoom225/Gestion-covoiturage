@@ -1,6 +1,33 @@
 ﻿export type Locale = 'fr' | 'en';
 
 export type TranslationKey =
+  | 'seo.description'
+  | 'carousel.label'
+  | 'carousel.description'
+  | 'carousel.slide'
+  | 'carousel.position'
+  | 'carousel.previous'
+  | 'carousel.next'
+  | 'carousel.pause'
+  | 'carousel.play'
+  | 'carousel.motionOff'
+  | 'carousel.controls'
+  | 'carousel.pagination'
+  | 'carousel.goTo'
+  | 'carousel.subtitle'
+  | 'carousel.discover'
+  | 'carousel.illustration'
+  | 'carousel.roadAlt'
+  | 'carousel.familyAlt'
+  | 'carousel.sharedAlt'
+  | 'carousel.brusselsAlt'
+  | 'benefits.label'
+  | 'benefits.driverTitle'
+  | 'benefits.driverBody'
+  | 'benefits.priceTitle'
+  | 'benefits.priceBody'
+  | 'benefits.simpleTitle'
+  | 'benefits.simpleBody'
   | 'design.bannerLabel'
   | 'design.bannerTitle'
   | 'design.bannerSubtitle'
@@ -499,6 +526,33 @@ export type TranslationParams = Record<string, string | number>;
 
 export const TRANSLATIONS: Record<Locale, Partial<Record<TranslationKey, string>>> = {
   fr: {
+    'seo.description': 'Covoiturage entre villes belges : chauffeur identifié, quatre passagers maximum et 25 € par personne. Paiement simulé dans cette version académique.',
+    'carousel.label': 'Voyager ensemble en Belgique',
+    'carousel.description': 'carrousel',
+    'carousel.slide': 'photographie',
+    'carousel.position': 'Photographie {current} sur {total}',
+    'carousel.previous': 'Photographie précédente',
+    'carousel.next': 'Photographie suivante',
+    'carousel.pause': 'Mettre le carrousel en pause',
+    'carousel.play': 'Relancer le défilement automatique',
+    'carousel.motionOff': 'Défilement automatique désactivé : mouvement réduit',
+    'carousel.controls': 'Commandes du carrousel',
+    'carousel.pagination': 'Choisir une photographie',
+    'carousel.goTo': 'Afficher la photographie {current} sur {total}',
+    'carousel.subtitle': 'Découvrez une nouvelle façon de voyager entre les villes belges.',
+    'carousel.discover': 'Découvrir le fonctionnement',
+    'carousel.illustration': 'Photos d’illustration · hors flotte réelle',
+    'carousel.roadAlt': 'Berline compacte sur une route à la campagne',
+    'carousel.familyAlt': 'Famille près d’une voiture compacte pendant un voyage',
+    'carousel.sharedAlt': 'Conducteur et passager vus depuis l’arrière d’une voiture',
+    'carousel.brusselsAlt': 'Voitures dans une rue résidentielle à Bruxelles',
+    'benefits.label': 'Un voyage en toute simplicité',
+    'benefits.driverTitle': 'Un chauffeur identifié',
+    'benefits.driverBody': 'Vous savez qui conduit avant de réserver votre place.',
+    'benefits.priceTitle': 'Un prix clair',
+    'benefits.priceBody': '25 € par personne. Les places inoccupées ne vous sont pas facturées.',
+    'benefits.simpleTitle': 'Une réservation suivie',
+    'benefits.simpleBody': 'Retrouvez vos paiements et votre confirmation dans votre espace.',
     'design.bannerLabel': 'Votre espace Transport',
     'design.bannerTitle': 'Votre prochain départ commence ici.',
     'design.bannerSubtitle': 'Des villes qui se rapprochent, des voyages qui se partagent. Trouvez votre place et voyagez ensemble.',
@@ -1025,6 +1079,33 @@ export const TRANSLATIONS: Record<Locale, Partial<Record<TranslationKey, string>
     'voyageur.reservations.reservationCancelError': 'Annulation impossible.',
   },
   en: {
+    'seo.description': 'Carpooling between Belgian cities: an identified driver, up to four passengers and €25 per person. Simulated payments in this academic version.',
+    'carousel.label': 'Travelling together in Belgium',
+    'carousel.description': 'carousel',
+    'carousel.slide': 'photograph',
+    'carousel.position': 'Photograph {current} of {total}',
+    'carousel.previous': 'Previous photograph',
+    'carousel.next': 'Next photograph',
+    'carousel.pause': 'Pause the carousel',
+    'carousel.play': 'Resume automatic rotation',
+    'carousel.motionOff': 'Automatic rotation disabled: reduced motion',
+    'carousel.controls': 'Carousel controls',
+    'carousel.pagination': 'Choose a photograph',
+    'carousel.goTo': 'Show photograph {current} of {total}',
+    'carousel.subtitle': 'Discover a new way to travel between Belgian cities.',
+    'carousel.discover': 'See how it works',
+    'carousel.illustration': 'Illustrative photos · not the actual fleet',
+    'carousel.roadAlt': 'Compact saloon on a country road',
+    'carousel.familyAlt': 'Family beside a compact car during a journey',
+    'carousel.sharedAlt': 'Driver and passenger viewed from the back of a car',
+    'carousel.brusselsAlt': 'Cars on a residential street in Brussels',
+    'benefits.label': 'A simpler way to travel',
+    'benefits.driverTitle': 'An identified driver',
+    'benefits.driverBody': 'Know who is driving before you book your seat.',
+    'benefits.priceTitle': 'A clear price',
+    'benefits.priceBody': '€25 per person. You are not charged for unoccupied seats.',
+    'benefits.simpleTitle': 'An easy-to-follow booking',
+    'benefits.simpleBody': 'Find your payments and confirmation in your personal area.',
     'design.bannerLabel': 'Your Transport space',
     'design.bannerTitle': 'Your next journey starts here.',
     'design.bannerSubtitle': 'Connecting cities, sharing journeys. Find your seat and travel together.',

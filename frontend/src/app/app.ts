@@ -172,7 +172,7 @@ import { LanguageSwitcherComponent } from './shared/components/language-switcher
              [fragment]="!adminSession.isAuthenticated() && !voyageurSession.isAuthenticated() ? 'trajets' : undefined"
              class="journey-action">{{ language.t(adminSession.isAuthenticated() ? 'nav.trajets' : 'transport.search') }} <span aria-hidden="true">→</span></a>
         </div>
-        <img src="images/mobilite-transport.svg" width="1000" height="600" alt="" aria-hidden="true" />
+        <img src="images/car-bruxelles-640.webp" width="640" height="360" alt="" aria-hidden="true" loading="lazy" decoding="async" />
       </section>
     }
     <main id="main-content" tabindex="-1" class="app-main-shell">
