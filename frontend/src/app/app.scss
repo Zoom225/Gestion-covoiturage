@@ -21,7 +21,7 @@ app-root {
 .journey-banner-copy > p { color: var(--ui-surface); margin: 0 0 1rem; line-height: 1.65; max-width: 650px; }
 .journey-banner-copy > .journey-eyebrow { font-size: .72rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 750; }
 .journey-banner-copy > .journey-banner-title { font-size: clamp(1.5rem, 3vw, 2.2rem); line-height: 1.2; font-weight: 800; letter-spacing: -.03em; }
-.journey-banner > img { display: block; width: 100%; height: auto; transform: rotate(-2deg); border-radius: 20px; }
+.journey-banner > img { display: block; width: 100%; height: auto; object-fit: cover; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--ui-surface) 25%, transparent); }
 .journey-action { display: inline-flex; align-items: center; gap: .75rem; max-width: 100%; min-height: 44px; padding: .75rem 1.2rem; color: var(--ui-navy); background: var(--ui-surface); border-radius: 12px; font-weight: 750; text-decoration: none; }
 .journey-banner-compact { padding-block: 1.5rem; grid-template-columns: minmax(0,1fr) 240px; }
 .journey-banner-compact > img { max-height: 160px; object-fit: contain; }
@@ -37,6 +37,7 @@ app-root {
   .journey-banner-compact .journey-action { font-size: .88rem; padding: .6rem .85rem; }
 }
 @media(prefers-reduced-motion: reduce) { .journey-banner > img { transform: none; } }
+@media(max-width: 380px) { .journey-banner-compact .journey-eyebrow { display: none; } }
 .admin-navigation {
   margin: 1.25rem auto 0;
   width: min(1220px, calc(100% - 2rem));

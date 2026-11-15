@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 :root {
-  --ui-navy: #102a43;
+  --ui-navy: #0b1f33;
   --ui-primary: #2563eb;
   --ui-primary-strong: #1d4ed8;
   --ui-primary-soft: #eff6ff;
@@ -15,7 +15,7 @@
   --ui-surface: #ffffff;
   --ui-background: #f5f7fb;
   --ui-surface-subtle: #f8fafc;
-  --ui-text: #102a43;
+  --ui-text: #14263d;
   --ui-text-secondary: #52657a;
   --ui-muted: #64748b;
   --ui-border: #dbe3ee;
@@ -26,9 +26,15 @@
   --ui-warning: #92400e;
   --ui-warning-soft: #fffbeb;
   --ui-disabled: #e2e8f0;
+  --ui-warm: #f59e0b;
+  --ui-hero-accent: #99f6e4;
+  --ui-radius-button: 12px;
+  --ui-radius-large: 24px;
+  --ui-space-section: clamp(2.75rem, 5vw, 4.5rem);
+  --ui-motion: 180ms cubic-bezier(.2, .7, .3, 1);
   --ui-radius: 16px;
-  --ui-shadow: 0 4px 20px rgb(16 42 67 / 5%);
-  --ui-shadow-raised: 0 14px 36px rgb(16 42 67 / 9%);
+  --ui-shadow: 0 6px 28px rgb(11 31 51 / 6%);
+  --ui-shadow-raised: 0 18px 44px rgb(11 31 51 / 12%);
   --ui-font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 app-root .app-main-shell .card-soft {
@@ -83,7 +89,7 @@ body.ocean-theme {
   color: var(--ui-text);
   background: var(--ui-background);
   font-family: var(--ui-font);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -105,7 +111,7 @@ h1 {
   font-weight: 750;
 }
 h2 {
-  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+  font-size: clamp(1.65rem, 2.4vw, 2.25rem);
   font-weight: 700;
 }
 p {
@@ -217,7 +223,7 @@ a {
   border-radius: 10px;
   font-weight: 650;
   text-decoration: none;
-  transition: background-color 0.15s;
+  transition: background-color var(--ui-motion), box-shadow var(--ui-motion), transform var(--ui-motion);
 }
 .ds-btn-primary,
 .quick-action-public {
@@ -381,7 +387,7 @@ th {
   gap: 0.75rem;
 }
 .mat-mdc-card-title {
-  font-size: 1.1rem;
+  font-size: clamp(1.125rem, 2vw, 1.3rem);
   font-weight: 700;
 }
 .mat-mdc-card-subtitle {
@@ -395,10 +401,11 @@ th {
 }
 .mat-mdc-button-base {
   min-height: 44px;
-  --mat-button-filled-container-shape: 10px;
-  --mat-button-outlined-container-shape: 10px;
-  --mat-button-text-container-shape: 10px;
+  --mat-button-filled-container-shape: var(--ui-radius-button);
+  --mat-button-outlined-container-shape: var(--ui-radius-button);
+  --mat-button-text-container-shape: var(--ui-radius-button);
   font-weight: 650;
+  transition: background-color var(--ui-motion), box-shadow var(--ui-motion), transform var(--ui-motion);
 }
 .mat-mdc-unelevated-button:not(:disabled) {
   --mat-button-filled-container-color: var(--ui-primary);
@@ -414,6 +421,20 @@ th {
 .mat-mdc-button-base:disabled {
   --mat-button-filled-disabled-container-color: var(--ui-disabled);
   --mat-button-filled-disabled-label-text-color: var(--ui-text-secondary);
+}
+.mat-mdc-button-base:not(.mat-mdc-icon-button) { max-width: 100%; height: auto; min-width: 0; white-space: normal; line-height: 1.4; padding-block: .6rem; }
+.mat-mdc-button-base .mdc-button__label { white-space: normal; overflow-wrap: anywhere; }
+.mat-mdc-form-field { --mat-form-field-outlined-focus-outline-color: var(--ui-primary); }
+.mat-mdc-text-field-wrapper { border-radius: var(--ui-radius-button); }
+tbody tr { transition: background-color var(--ui-motion); }
+tbody tr:hover { background: var(--ui-primary-soft); }
+.admin-kpi, .status-success, .status-error, .status-info, .app-nav.open, .admin-navigation nav.open, .ui-entered {
+  animation: ui-enter 420ms ease-out;
+}
+@keyframes ui-enter { from { opacity: .65; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@media(hover: hover) and (prefers-reduced-motion: no-preference) {
+  .mat-mdc-button-base:not(:disabled):hover, .ds-btn:hover, .quick-action:hover { transform: translateY(-1px); box-shadow: var(--ui-shadow); }
+  .mat-mdc-button-base:not(:disabled):active, .ds-btn:active { transform: translateY(0); }
 }
 @media (max-width: 600px) {
   .page-shell,
@@ -441,9 +462,8 @@ th {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition: none !important;
     scroll-behavior: auto !important;
   }
 }
