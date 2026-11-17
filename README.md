@@ -12,17 +12,27 @@ Les paiements et remboursements sont **simulés**, sans prestataire bancaire.
 
 ## Connexions de validation
 
-Administrateurs : [connexion](http://127.0.0.1:4202/admin/login).
-Voyageurs : [connexion](http://127.0.0.1:4202/voyageur).
+Accès directs aux portails de l'application :
+* **Portail Administrateur** : [Connexion Admin](http://127.0.0.1:4200/admin/login) (ou port `4202`)
+* **Portail Voyageur** : [Connexion Voyageur](http://127.0.0.1:4200/voyageur) (ou port `4202`)
 
-| Compte | Identifiant | Mot de passe de validation |
-| --- | --- | --- |
-| Administrateur global | `admin@transp.com` | `Admin1234!` |
-| Administrateur local Lyon | `admin.lyon@transp.com` | `Admin1234!` |
-| Administrateur local Paris | `admin.paris@transp.com` | `Admin1234!` |
-| Voyageurs VIP | `V1001`, `V1002` | `Voyage1234!` |
-| Voyageurs locaux | `L10001`, `L10002` | `Voyage1234!` |
-| Voyageurs libres | `F10001`, `F10002` | `Voyage1234!` |
+### 1. Comptes Administrateurs
+
+| Rôle | Identifiant (Email) | Mot de passe | Périmètre d'administration |
+| :--- | :--- | :--- | :--- |
+| **Administrateur global** | `admin@transp.com` | `Admin1234!` | Accès total : toutes les agences, tous les véhicules, création de trajets et KPIs globaux |
+| **Administrateur local Lyon** | `admin.lyon@transp.com` | `Admin1234!` | Gestionnaire d'agence : accès restreint aux ressources et voyageurs de son agence |
+| **Administrateur local Paris** | `admin.paris@transp.com` | `Admin1234!` | Second gestionnaire d'agence : gestion des ressources de son agence |
+
+### 2. Comptes Voyageurs
+
+| Profil / Usage | Matricule | Mot de passe | Type | Solde | Statut & Règle métier démontrée |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Chauffeur autorisé** | `V1001` | `Voyage1234!` | `VIP` | `0.0 €` | **Chauffeur actif** : autorisé à proposer et publier des trajets publics et privés |
+| **Client VIP** | `V1002` | `Voyage1234!` | `VIP` | `0.0 €` | **Client actif** : réservations prioritaires et simulation de paiement |
+| **Client local** | `L10001` | `Voyage1234!` | `LOCAL` | `0.0 €` | **Client actif** : rattaché à l'agence de démonstration |
+| **Client libre** | `F10001` | `Voyage1234!` | `LIBRE` | `0.0 €` | **Client actif** : voyageur standard tout public |
+| **Client pénalisé (Démo)** | `F10002` | `Voyage1234!` | `LIBRE` | **`100.0 €`** | **Cas de pénalité & restriction** :<br>• Solde débiteur de **100 €** (impayé de 4 places pour trajet privé resté incomplet)<br>• **Restriction active 7 jours** : réservations et créations de trajets bloquées par les règles métier |
 
 Ces identifiants concernent la copie locale de validation. Les suffixes numériques,
 identifiants internes, catégories, agences et historiques sont conservés.
@@ -428,22 +438,23 @@ finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pointeurDemoTransport
 
 Comptes créés uniquement dans cette base de démonstration :
 
-| Connexion      | Identifiant         | Fonction                                  |
-| -------------- | ------------------- | ----------------------------------------- |
-| Voyageur       | V1001               | Chauffeur autorisé                        |
-| Voyageur       | V1002               | Client VIP                                |
-| Voyageur       | L10001              | Client local                              |
-| Voyageur       | F10001              | Client libre                              |
-| Administrateur | admin@transp.com    | Administrateur global                     |
-| Administrateur | admin.lyon@transp.com | Gestionnaire de l'agence de démonstration |
-| Administrateur | admin.paris@transp.com | Second gestionnaire de cette même agence de démonstration |
+| Espace | Profil / Rôle | Identifiant / Matricule | Mot de passe | Solde | Rôle & Particularité démonstration |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Voyageur** | Chauffeur autorisé | `V1001` | `Voyage1234!` | `0.0 €` | Propose et publie des trajets |
+| **Voyageur** | Client VIP | `V1002` | `Voyage1234!` | `0.0 €` | Réservations prioritaires |
+| **Voyageur** | Client local | `L10001` | `Voyage1234!` | `0.0 €` | Client rattaché à l'agence |
+| **Voyageur** | Client libre | `F10001` | `Voyage1234!` | `0.0 €` | Voyageur standard tout public |
+| **Voyageur** | **Client pénalisé** | `F10002` | `Voyage1234!` | **`100.0 €`** | **Cas concret pénalité** : solde impayé (4 × 25 €) + restriction 7 jours (bloqué à la réservation & création) |
+| **Admin** | Administrateur global | `admin@transp.com` | `Admin1234!` | — | Supervision et gestion complète |
+| **Admin** | Administrateur local 1 | `admin.lyon@transp.com` | `Admin1234!` | — | Gestionnaire d'agence Lyon |
+| **Admin** | Administrateur local 2 | `admin.paris@transp.com` | `Admin1234!` | — | Gestionnaire d'agence Paris |
 
 Lorsque `DEMO_PASSWORD` est fourni comme dans la commande ci-dessus, il remplace
 les deux mots de passe de démonstration. Sans cette variable, les valeurs sont
 `Admin1234!` pour les administrateurs et `Voyage1234!` pour les voyageurs ; elles
 sont personnalisables avec `DEMO_ADMIN_PASSWORD` et `DEMO_VOYAGEUR_PASSWORD`.
-Les huit trajets de démonstration proposent chacun quatre places,
-sans réservation du chauffeur. Ils ne sont jamais insérés automatiquement dans la base métier.
+Les neuf trajets de démonstration proposent chacun quatre places (dont le trajet privé
+resté incomplet rattaché au voyageur pénalisé `F10002`). Ils ne sont jamais insérés automatiquement dans la base métier.
 
 Parcours de présentation :
 
