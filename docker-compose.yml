@@ -1,8 +1,9 @@
+name: gestiontransport
+
 services:
-  # Existing container/volume retained; the database is renamed by the documented migration.
   postgres:
     image: postgres:15
-    container_name: padel-db
+    container_name: gestiontransport-db
     environment:
       POSTGRES_DB: transportService
       POSTGRES_USER: ${DB_USER:-transport}
@@ -20,3 +21,5 @@ services:
 
 volumes:
   padel-db-data:
+    name: padellaoutt_padel-db-data
+    external: true
