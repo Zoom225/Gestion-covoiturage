@@ -20,7 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -39,7 +39,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Import(SecurityConfig.class)
 @WebMvcTest(controllers = VoyageurController.class)
-@SuppressWarnings("deprecation")
 @DisplayName("Tests de VoyageurController")
 class VoyageurControllerTest {
 
@@ -49,24 +48,24 @@ class VoyageurControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private VoyageurService voyageurService;
-    @MockBean
+    @MockitoBean
     private AgenceService agenceService;
-    @MockBean
+    @MockitoBean
     private VoyageurMapper voyageurMapper;
-    @MockBean
+    @MockitoBean
     private AdminAuthorizationService adminAuthorizationService;
-    @MockBean
+    @MockitoBean
     private VoyageurCourantService currentVoyageurService;
 
-    @MockBean
+    @MockitoBean
     private JwtConfig jwtConfig;
-    @MockBean
+    @MockitoBean
     private PasswordEncoder passwordEncoder;
-    @MockBean
+    @MockitoBean
     private AdministrateurRepository administrateurRepository;
-    @MockBean
+    @MockitoBean
     private VoyageurRepository voyageurRepository;
 
     private VoyageurRequest voyageurRequest;
