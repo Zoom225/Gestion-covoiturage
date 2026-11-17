@@ -54,6 +54,7 @@ class DataInitializerTest {
         when(agenceRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(vehiculeRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(voyageurRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(restrictionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(agenceRepository.count()).thenReturn(0L, 1L);
         dataInitializer.run();
         dataInitializer.run();
@@ -62,6 +63,7 @@ class DataInitializerTest {
                 && t.getVilleDepart() != t.getVilleArrivee() && t.getPrixParPassager() == 25.0));
         verify(reservationRepository, never()).save(any());
         verify(paiementRepository, never()).save(any());
+        verify(restrictionRepository).save(any());
     }
 
     @Test
@@ -72,11 +74,13 @@ class DataInitializerTest {
         when(agenceRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(vehiculeRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(voyageurRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(restrictionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         dataInitializer.run();
         for (String email : new String[]{"admin@transp.com", "admin.lyon@transp.com", "admin.paris@transp.com"}) {
             verify(administrateurRepository).save(argThat(a -> email.equals(a.getEmail()) && "hash-admin".equals(a.getPasswordHash())));
         }
-        verify(voyageurRepository, times(4)).save(argThat(v -> "hash-voyageur".equals(v.getPasswordHash())));
+        verify(voyageurRepository, times(5)).save(argThat(v -> "hash-voyageur".equals(v.getPasswordHash())));
+        verify(restrictionRepository).save(any());
     }
 
     @Test

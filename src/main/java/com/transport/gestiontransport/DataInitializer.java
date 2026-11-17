@@ -30,11 +30,11 @@ import java.time.LocalTime;
  * | Voyageur local       | L10001                  | Voyage1234!    |
  * | Voyageur local       | L10002                  | Voyage1234!    |
  * | Voyageur libre       | F10001                  | Voyage1234!    |
- * | Voyageur libre       | F10002                  | Voyage1234!    |
+ * | Voyageur pénalisé    | F10002                  | Voyage1234!    |
  * +----------------------+-------------------------+----------------+
  * </pre>
  * Copie locale configurée : les neuf comptes ci-dessus sont disponibles.
- * Base dev vide : création de V1001, V1002, L10001, F10001 et des trois admins.
+ * Base dev vide : création de V1001, V1002, L10001, F10001, F10002 et des trois admins.
  * Les mots de passe ci-dessus sont les valeurs de validation par défaut ;
  * DEMO_PASSWORD ou les variables DEMO_ADMIN_PASSWORD/DEMO_VOYAGEUR_PASSWORD
  * peuvent les remplacer lors de la préparation d'une démonstration.
@@ -90,7 +90,7 @@ public class DataInitializer implements CommandLineRunner {
             }
             return;
         }
-        if (databaseUrl == null || !databaseUrl.matches("jdbc:postgresql://[^/]+/(issue1_validation_[a-z0-9_]+|transport_demo_[a-z0-9_]+)(\\?.*)?")) {
+        if (databaseUrl == null || !databaseUrl.matches("jdbc:postgresql://[^/]+/(issue1_validation_[a-z0-9_]+|transport_demo_[a-z0-9_]+)(\\\\?.*)?")) {
             throw new IllegalStateException("La démonstration exige une base isolée explicitement nommée.");
         }
         if (demoPassword != null && !demoPassword.isBlank()
@@ -123,6 +123,15 @@ public class DataInitializer implements CommandLineRunner {
         voyageurRepository.save(Voyageur.builder().matricule("F10001").nom("Démo").prenom("Client libre")
                 .email("libre@example.test").passwordHash(hash).typeVoyageur(TypeVoyageur.LIBRE)
                 .solde(0.0).agence(agence).build());
+        Voyageur penalise = voyageurRepository.save(Voyageur.builder().matricule("F10002").nom("Démo").prenom("Client pénalisé")
+                .email("penalise@example.test").passwordHash(hash).typeVoyageur(TypeVoyageur.LIBRE)
+                .solde(0.0).agence(agence).build());
+        restrictionRepository.save(Restriction.builder().voyageur(penalise)
+                .motif("Suspension de réservation : absence injustifiée à un trajet")
+                .dateDebut(LocalDate.now())
+                .dateFin(LocalDate.now().plusDays(7))
+                .sourceEvenement("demo:absence:initiale")
+                .build());
         administrateurRepository.save(Administrateur.builder().matricule("AD1001").nom("Démo").prenom("Admin global")
                 .email("admin@transp.com").passwordHash(adminHash).typeAdministrateur(TypeAdministrateur.GLOBAL).build());
         administrateurRepository.save(Administrateur.builder().matricule("AD1002").nom("Démo").prenom("Admin local")
@@ -144,7 +153,7 @@ public class DataInitializer implements CommandLineRunner {
                 .prixTotal(TrajetService.PRIX_TRAJET_EUROS.doubleValue())
                 .prixParPassager(TrajetService.PRIX_CLIENT_EUROS.doubleValue()).build());
         }
-        log.info("Démonstration créée sur base isolée vide : aucune réservation ni aucun paiement de chauffeur.");
+        log.info("Démonstration créée sur base isolée vide : voyageur pénalisé F10002 créé avec restriction active de 7 jours.");
     }
 
     private void updateValidationCredentials() {
