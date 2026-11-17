@@ -125,12 +125,12 @@ public class DataInitializer implements CommandLineRunner {
                 .solde(0.0).agence(agence).build());
         Voyageur penalise = voyageurRepository.save(Voyageur.builder().matricule("F10002").nom("Démo").prenom("Client pénalisé")
                 .email("penalise@example.test").passwordHash(hash).typeVoyageur(TypeVoyageur.LIBRE)
-                .solde(0.0).agence(agence).build());
+                .solde(TrajetService.PRIX_TRAJET_EUROS.doubleValue()).peutProposerTrajet(true).agence(agence).build());
         restrictionRepository.save(Restriction.builder().voyageur(penalise)
-                .motif("Suspension de réservation : absence injustifiée à un trajet")
+                .motif("Suspension de réservation : trajet privé resté incomplet (solde débiteur de 100€)")
                 .dateDebut(LocalDate.now())
                 .dateFin(LocalDate.now().plusDays(7))
-                .sourceEvenement("demo:absence:initiale")
+                .sourceEvenement("demo:penalite:trajet-prive-incomplet")
                 .build());
         administrateurRepository.save(Administrateur.builder().matricule("AD1001").nom("Démo").prenom("Admin global")
                 .email("admin@transp.com").passwordHash(adminHash).typeAdministrateur(TypeAdministrateur.GLOBAL).build());
@@ -153,7 +153,17 @@ public class DataInitializer implements CommandLineRunner {
                 .prixTotal(TrajetService.PRIX_TRAJET_EUROS.doubleValue())
                 .prixParPassager(TrajetService.PRIX_CLIENT_EUROS.doubleValue()).build());
         }
-        log.info("Démonstration créée sur base isolée vide : voyageur pénalisé F10002 créé avec restriction active de 7 jours.");
+        // Trajet privé resté incomplet créé par le chauffeur pénalisé ayant engendré la pénalité de 100€
+        java.time.LocalDateTime departPriveIncomplet = jour.minusDays(1).atTime(10, 0);
+        trajetRepository.save(Trajet.builder().chauffeur(penalise).vehicule(voiture)
+                .villeDepart(VilleBelge.MONS).villeArrivee(VilleBelge.BRUXELLES)
+                .dateDebut(departPriveIncomplet).dateFin(departPriveIncomplet.plusMinutes(90))
+                .typeTrajet(TypeTrajet.PRIVE).statut(StatutTrajet.PLANIFIE).nbPassagersActuels(0)
+                .publicationAutomatiqueAutorisee(false)
+                .prixTotal(TrajetService.PRIX_TRAJET_EUROS.doubleValue())
+                .prixParPassager(TrajetService.PRIX_CLIENT_EUROS.doubleValue()).build());
+
+        log.info("Démonstration créée sur base isolée vide : voyageur pénalisé F10002 créé avec solde impayé de 100€ et restriction active.");
     }
 
     private void updateValidationCredentials() {

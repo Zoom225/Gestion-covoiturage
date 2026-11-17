@@ -244,11 +244,39 @@ public class TrajetServiceImpl implements TrajetService {
     @Transactional
     public void checkAndConvertExpiredPrivateTrajets() {
         LocalDateTime maintenant = LocalDateTime.now();
-        trajetRepository.findByDateDebutBetweenAndStatut(maintenant, maintenant.plusHours(24), StatutTrajet.PLANIFIE)
-                .stream().filter(t -> t.getTypeTrajet() == TypeTrajet.PRIVE && t.isPublicationAutomatiqueAutorisee())
+        List<Trajet> trajets24h = trajetRepository.findByDateDebutBetweenAndStatut(maintenant, maintenant.plusHours(24), StatutTrajet.PLANIFIE);
+
+        // 1. Conversion automatique si autorisée par le chauffeur
+        trajets24h.stream()
+                .filter(t -> t.getTypeTrajet() == TypeTrajet.PRIVE && t.isPublicationAutomatiqueAutorisee())
                 .forEach(t -> convertToPublic(t.getId()));
+
+        // 2. Trajet privé sans consentement de conversion restant incomplet (< 4 passagers) :
+        // Le chauffeur est tenu responsable du montant complet des 4 places (100€)
+        trajets24h.stream()
+                .filter(t -> t.getTypeTrajet() == TypeTrajet.PRIVE && !t.isPublicationAutomatiqueAutorisee())
+                .filter(t -> t.getNbPassagersActuels() < Trajet.MAX_CLIENTS)
+                .forEach(t -> imputerPenaliteTrajetPriveIncomplet(t.getId()));
     }
 
+    @Override
+    @Transactional
+    public void imputerPenaliteTrajetPriveIncomplet(Long trajetId) {
+        Trajet trajet = getTrajetEntityById(trajetId);
+        if (trajet.getTypeTrajet() != TypeTrajet.PRIVE) {
+            throw new BusinessException("Seuls les trajets privés sont soumis à la pénalité de complétude.");
+        }
+        if (trajet.getNbPassagersActuels() < Trajet.MAX_CLIENTS) {
+            Voyageur chauffeur = trajet.getChauffeur();
+            if (chauffeur != null && chauffeur.getSolde() == 0.0) {
+                entityManager.lock(chauffeur, LockModeType.PESSIMISTIC_WRITE);
+                chauffeur.setSolde(PRIX_TRAJET_EUROS.doubleValue());
+                voyageurRepository.save(chauffeur);
+                log.info("Règle métier : pénalité de {}€ imputée au chauffeur {} pour trajet privé {} incomplet.",
+                        PRIX_TRAJET_EUROS, chauffeur.getMatricule(), trajet.getId());
+            }
+        }
+    }
 
     @Override
     @Transactional
@@ -266,11 +294,6 @@ public class TrajetServiceImpl implements TrajetService {
         trajet.setDateConversionPublic(maintenant);
         trajetRepository.save(trajet);
     }
-
-
-
-
-
 
     //la règle des 15 minutes entre deux trajets
     private boolean isSlotAvailable(Vehicule vehicule, LocalDateTime start, LocalDateTime end) {
@@ -294,7 +317,6 @@ public class TrajetServiceImpl implements TrajetService {
         );
         return existingTrajets.stream().allMatch(m -> m.getId().equals(excludedTrajetId));
     }
-
 
     //methode fermeture globaux de agence
     private void validateAgenceNotClosed(Vehicule vehicule, LocalDate date) {
@@ -323,6 +345,4 @@ public class TrajetServiceImpl implements TrajetService {
             }
         }
     }
-
-
 }

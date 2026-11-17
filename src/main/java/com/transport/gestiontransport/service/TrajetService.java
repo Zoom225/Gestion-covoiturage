@@ -47,4 +47,10 @@ public interface TrajetService {
     void convertToPublic(Long trajetId);
 
     void checkAndConvertExpiredPrivateTrajets();
+
+    /**
+     * Règle métier : impute la pénalité équivalente aux 4 places (100€) à l'organisateur/chauffeur
+     * lorsqu'un trajet privé arrive à échéance en restant incomplet sans conversion publique autorisée.
+     */
+    void imputerPenaliteTrajetPriveIncomplet(Long trajetId);
 }

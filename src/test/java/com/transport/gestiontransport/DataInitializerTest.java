@@ -58,7 +58,7 @@ class DataInitializerTest {
         when(agenceRepository.count()).thenReturn(0L, 1L);
         dataInitializer.run();
         dataInitializer.run();
-        verify(trajetRepository, times(8)).save(argThat(t -> t.getChauffeur() != null
+        verify(trajetRepository, times(9)).save(argThat(t -> t.getChauffeur() != null
                 && Boolean.TRUE.equals(t.getChauffeur().getPeutProposerTrajet()) && t.getNbPassagersActuels() == 0
                 && t.getVilleDepart() != t.getVilleArrivee() && t.getPrixParPassager() == 25.0));
         verify(reservationRepository, never()).save(any());
