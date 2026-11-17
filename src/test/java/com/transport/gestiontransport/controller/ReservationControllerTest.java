@@ -19,7 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -38,7 +38,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @Import(SecurityConfig.class)
 @WebMvcTest(controllers = ReservationController.class)
-@SuppressWarnings("deprecation")
 @DisplayName("Tests de ReservationController")
 class ReservationControllerTest {
 
@@ -48,20 +47,20 @@ class ReservationControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private ReservationService reservationService;
-    @MockBean
+    @MockitoBean
     private ReservationMapper reservationMapper;
-    @MockBean
+    @MockitoBean
     private VoyageurCourantService currentVoyageurService;
 
-    @MockBean
+    @MockitoBean
     private JwtConfig jwtConfig;
-    @MockBean
+    @MockitoBean
     private AdministrateurRepository administrateurRepository;
-    @MockBean
+    @MockitoBean
     private VoyageurRepository voyageurRepository;
-    @MockBean
+    @MockitoBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
     private ReservationRequest reservationRequest;
     private ReservationResponse reservationResponse;
